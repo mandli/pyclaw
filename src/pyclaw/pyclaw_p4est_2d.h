@@ -22,6 +22,7 @@ void             pyclaw_p4est_destroy (pyclaw_p4est_t * pp);
 
 typedef struct pyclaw_p4est_leaf {
   pyclaw_p4est_t * pp;
+  int            level;
   p4est_topidx_t which_tree;
   p4est_locidx_t which_quad;
   p4est_locidx_t total_quad;

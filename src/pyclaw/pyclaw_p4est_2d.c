@@ -55,6 +55,7 @@ pyclaw_p4est_leaf_info (pyclaw_p4est_leaf_t * leaf) {
   leaf->quad = p4est_quadrant_array_index (&leaf->tree->quadrants,
 					   leaf->which_quad);
 
+  leaf->level = (int) leaf->quad->level;
   p4est_qcoord_to_vertex (leaf->pp->conn, leaf->which_tree,
 			  leaf->quad->x, leaf->quad->y,
 #ifdef P4_TO_P8
@@ -70,10 +71,10 @@ pyclaw_p4est_leaf_info (pyclaw_p4est_leaf_t * leaf) {
 			  leaf->upperright);
 
 #ifdef P4EST_DEBUG
-  printf ("C: Leaf iterator is at %d %d %d\n",
-	  leaf->which_tree, leaf->which_quad, leaf->total_quad);
+  printf ("C: Leaf level %d tree %d tree_leaf %d local_leaf %d\n",
+	  leaf->level, leaf->which_tree, leaf->which_quad, leaf->total_quad);
   for (nface = 0; nface < P4EST_FACES; ++nface) {
-    printf ("C: Leaf face %d quad %d\n", nface,
+    printf ("C: Leaf face %d leaf %d\n", nface,
 	    mesh->quad_to_quad[P4EST_FACES * leaf->total_quad + nface]);
   }
 #endif

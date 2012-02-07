@@ -38,6 +38,7 @@ def pyclaw_pp_get_num_leaves (pp):
 # Wrap leaf iterator with ctypes
 class pyclaw_leaf (Structure):
 	_fields_ = [("pp", pyclaw_pp_pointer),
+		    ("level", c_int),
 		    ("which_tree", c_int),
 		    ("which_quad", c_int),
 		    ("total_quad", c_int),
@@ -78,12 +79,12 @@ class p4est_Domain (pyclaw.geometry.Domain):
 		while (leaf):
 
 			# This is a demonstration to show off the structure
-			print "Py leaf iterator is at", \
-				leaf.contents.which_tree, \
-				leaf.contents.which_quad, \
-				leaf.contents.total_quad
+			print "Py leaf level", leaf.contents.level, \
+				"tree", leaf.contents.which_tree, \
+				"tree_leaf", leaf.contents.which_quad, \
+				"local_leaf", leaf.contents.total_quad
 			for nface in range (self.pp.contents.P4EST_FACES):
-				print "Py leaf face", nface, "quad", \
+				print "Py leaf face", nface, "leaf", \
  mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
 
 			# TODO: Do something with leaf
