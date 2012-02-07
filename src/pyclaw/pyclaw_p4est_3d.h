@@ -4,11 +4,14 @@
 /*** COMPLETE INTERNAL STATE OF P4EST ***/
 
 typedef struct pyclaw_p8est {
+  int            p4est_dim;
+  int            p4est_half;
+  int            p4est_faces;
+  int            p4est_children;
   p8est_connectivity_t * conn;
   p8est_t * p4est;
   p8est_ghost_t * ghost;
   p8est_mesh_t * mesh;
-  int test_number;
 }
 pyclaw_p8est_t;
 

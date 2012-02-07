@@ -15,6 +15,10 @@ pyclaw_p4est_new (void)
   pyclaw_p4est_t * pp;
 
   pp = SC_ALLOC (pyclaw_p4est_t, 1);
+  pp->p4est_dim = P4EST_DIM;
+  pp->p4est_half = P4EST_HALF;
+  pp->p4est_faces = P4EST_FACES;
+  pp->p4est_children = P4EST_CHILDREN;
 #ifndef P4_TO_P8
   pp->conn = p4est_connectivity_new_unitsquare ();
 #else
@@ -24,11 +28,6 @@ pyclaw_p4est_new (void)
 			     0, 1, 1, 0, NULL, NULL);
   pp->ghost = p4est_ghost_new (pp->p4est, P4EST_CONNECT_FULL);
   pp->mesh = p4est_mesh_new (pp->p4est, pp->ghost, P4EST_CONNECT_FULL);
-#ifndef P4_TO_P8
-  pp->test_number = 22222;
-#else
-  pp->test_number = 33333;
-#endif
 
   return pp;
 }
@@ -46,6 +45,10 @@ pyclaw_p4est_destroy (pyclaw_p4est_t * pp)
 
 static pyclaw_p4est_leaf_t *
 pyclaw_p4est_leaf_info (pyclaw_p4est_leaf_t * leaf) {
+#ifdef P4EST_DEBUG
+  int		   nface;
+  p4est_mesh_t    *mesh = leaf->pp->mesh;
+#endif
   p4est_quadrant_t corner;
 
   leaf->total_quad = leaf->tree->quadrants_offset + leaf->which_quad;
@@ -65,6 +68,16 @@ pyclaw_p4est_leaf_info (pyclaw_p4est_leaf_t * leaf) {
 			  corner.z,
 #endif
 			  leaf->upperright);
+
+#ifdef P4EST_DEBUG
+  printf ("C: Leaf iterator is at %d %d %d\n",
+	  leaf->which_tree, leaf->which_quad, leaf->total_quad);
+  for (nface = 0; nface < P4EST_FACES; ++nface) {
+    printf ("C: Leaf face %d quad %d\n", nface,
+	    mesh->quad_to_quad[P4EST_FACES * leaf->total_quad + nface]);
+  }
+#endif
+
   return leaf;
 }
 
@@ -72,7 +85,6 @@ pyclaw_p4est_leaf_t *
 pyclaw_p4est_leaf_first (pyclaw_p4est_t * pp)
 {
   pyclaw_p4est_leaf_t * leaf;
-  p4est_quadrant_t corner;
   p4est_t * p4est = pp->p4est;
 
   if (p4est->local_num_quadrants == 0) {

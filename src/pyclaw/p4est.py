@@ -22,11 +22,14 @@ class pyclaw_mesh (Structure):
 		    ("quad_to_half", pyclaw_sc_array_pointer)]
 pyclaw_mesh_pointer = POINTER (pyclaw_mesh)
 class pyclaw_pp (Structure):
-	_fields_ = [("conn", c_void_p),
+	_fields_ = [("P4EST_DIM", c_int),
+		    ("P4EST_HALF", c_int),
+		    ("P4EST_FACES", c_int),
+		    ("P4EST_CHILDREN", c_int),
+		    ("conn", c_void_p),
 		    ("p4est", c_void_p),
 		    ("ghost", c_void_p),
-		    ("mesh", pyclaw_mesh_pointer),
-		    ("test_number", c_int)]
+		    ("mesh", pyclaw_mesh_pointer)]
 pyclaw_pp_pointer = POINTER (pyclaw_pp)
 
 def pyclaw_pp_get_num_leaves (pp):
@@ -34,7 +37,8 @@ def pyclaw_pp_get_num_leaves (pp):
 
 # Wrap leaf iterator with ctypes
 class pyclaw_leaf (Structure):
-	_fields_ = [("which_tree", c_int),
+	_fields_ = [("pp", pyclaw_pp_pointer),
+		    ("which_tree", c_int),
 		    ("which_quad", c_int),
 		    ("total_quad", c_int),
 		    ("tree", c_void_p),
@@ -60,12 +64,27 @@ class p4est_Domain (pyclaw.geometry.Domain):
 		# Create a 2D p4est internal state on a square
 		self.pp = libp4est.pyclaw_p4est_new ()
 
-		print "A test number:", self.pp.contents.test_number
-		print "Number of elements:", \
+		print "Number of leaves:", \
 			pyclaw_pp_get_num_leaves (self.pp)
 
+		# Number of faces of a leaf (4 in 2D, 6 in 3D)
+		P4EST_FACES = self.pp.contents.P4EST_FACES
+
+		# Mesh is the lookup table for leaf neighbors
+		mesh = self.pp.contents.mesh
+
+		# Use the leaf iterator to loop over all leafs
 		leaf = libp4est.pyclaw_p4est_leaf_first (self.pp)
 		while (leaf):
+
+			# This is a demonstration to show off the structure
+			print "Py leaf iterator is at", \
+				leaf.contents.which_tree, \
+				leaf.contents.which_quad, \
+				leaf.contents.total_quad
+			for nface in range (self.pp.contents.P4EST_FACES):
+				print "Py leaf face", nface, "quad", \
+ mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
 
 			# TODO: Do something with leaf
 	# 		# TODO: change coordinates for subpatch by geom
