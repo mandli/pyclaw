@@ -1,8 +1,12 @@
 
 #ifndef P4_TO_P8
 #include "pyclaw_p4est_2d.h"
+#include <p4est_bits.h>
+#include <p4est_extended.h>
 #else
 #include "pyclaw_p4est_3d.h"
+#include <p8est_bits.h>
+#include <p8est_extended.h>
 #endif
 
 pyclaw_p4est_t *
@@ -16,13 +20,10 @@ pyclaw_p4est_new (void)
 #else
   pp->conn = p8est_connectivity_new_unitcube ();
 #endif
-  pp->p4est = p4est_new (MPI_COMM_WORLD, pp->conn, 0, NULL, NULL);
+  pp->p4est = p4est_new_ext (MPI_COMM_WORLD, pp->conn,
+			     0, 1, 1, 0, NULL, NULL);
   pp->ghost = p4est_ghost_new (pp->p4est, P4EST_CONNECT_FULL);
   pp->mesh = p4est_mesh_new (pp->p4est, pp->ghost, P4EST_CONNECT_FULL);
-  pp->mesh_quad_to_half_num =
-    (p4est_locidx_t) pp->mesh->quad_to_half->elem_count;
-  pp->mesh_quad_to_half_entries =
-    (p4est_locidx_t *) pp->mesh->quad_to_half->array;
 #ifndef P4_TO_P8
   pp->test_number = 22222;
 #else
@@ -41,4 +42,73 @@ pyclaw_p4est_destroy (pyclaw_p4est_t * pp)
   p4est_connectivity_destroy (pp->conn);
 
   SC_FREE (pp);
+}
+
+static pyclaw_p4est_leaf_t *
+pyclaw_p4est_leaf_info (pyclaw_p4est_leaf_t * leaf) {
+  p4est_quadrant_t corner;
+
+  leaf->total_quad = leaf->tree->quadrants_offset + leaf->which_quad;
+  leaf->quad = p4est_quadrant_array_index (&leaf->tree->quadrants,
+					   leaf->which_quad);
+
+  p4est_qcoord_to_vertex (leaf->pp->conn, leaf->which_tree,
+			  leaf->quad->x, leaf->quad->y,
+#ifdef P4_TO_P8
+			  leaf->quad->z,
+#endif
+			  leaf->lowerleft);
+  p4est_quadrant_corner_node (leaf->quad, P4EST_CHILDREN - 1, &corner);
+  p4est_qcoord_to_vertex (leaf->pp->conn, leaf->which_tree,
+			  corner.x, corner.y,
+#ifdef P4_TO_P8
+			  corner.z,
+#endif
+			  leaf->upperright);
+  return leaf;
+}
+
+pyclaw_p4est_leaf_t *
+pyclaw_p4est_leaf_first (pyclaw_p4est_t * pp)
+{
+  pyclaw_p4est_leaf_t * leaf;
+  p4est_quadrant_t corner;
+  p4est_t * p4est = pp->p4est;
+
+  if (p4est->local_num_quadrants == 0) {
+    return NULL;
+  }
+
+  leaf = SC_ALLOC (pyclaw_p4est_leaf_t, 1);
+  leaf->pp = pp;
+  leaf->which_tree = p4est->first_local_tree;
+  leaf->tree = p4est_tree_array_index (p4est->trees, leaf->which_tree);
+  P4EST_ASSERT (leaf->tree->quadrants.elem_size > 0);
+  leaf->which_quad = 0;
+
+  return pyclaw_p4est_leaf_info (leaf);
+}
+
+pyclaw_p4est_leaf_t *
+pyclaw_p4est_leaf_next (pyclaw_p4est_leaf_t * leaf)
+{
+  p4est_t * p4est = leaf->pp->p4est;
+
+  P4EST_ASSERT (leaf != NULL);
+
+  if ((size_t) leaf->which_quad + 1 == leaf->tree->quadrants.elem_count) {
+    ++leaf->which_tree;
+    if (leaf->which_tree > p4est->last_local_tree) {
+      SC_FREE (leaf);
+      return NULL;
+    }
+    leaf->tree = p4est_tree_array_index (p4est->trees, leaf->which_tree);
+    P4EST_ASSERT (leaf->tree->quadrants.elem_size > 0);
+    leaf->which_quad = 0;
+  }
+  else {
+    ++leaf->which_quad;
+  }
+
+  return pyclaw_p4est_leaf_info (leaf);
 }
