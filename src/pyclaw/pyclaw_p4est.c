@@ -1,8 +1,8 @@
 
-#include <p4est.h>
-#include <p8est.h>
+#include <p4est_mesh.h>
+#include <p8est_mesh.h>
 
-/* TODO: This should be called elsewhere in a more sensible place */
+/* TODO: This should be called elsewhere in a more appropriate place */
 void
 pyclaw_MPI_Init (void)
 {
@@ -15,7 +15,7 @@ pyclaw_MPI_Init (void)
   MPI_Init (&argc, &argv);
 }
 
-/* TODO: This should be called elsewhere in a more sensible place */
+/* TODO: This should be called elsewhere in a more appropriate place */
 void
 pyclaw_MPI_Finalize (void)
 {
@@ -24,50 +24,88 @@ pyclaw_MPI_Finalize (void)
 
 /* 2D p4est routines */
 
-p4est_t *
+typedef struct pyclaw_p4est {
+  p4est_connectivity_t * conn;
+  p4est_t * p4est;
+  p4est_ghost_t * ghost;
+  p4est_mesh_t * mesh;
+  /* these two variables expose members of mesh->quad_to_half */
+  p4est_locidx_t mesh_quad_to_half_num;
+  p4est_locidx_t * mesh_quad_to_half_entries;
+  int test_number;
+}
+pyclaw_p4est_t;
+
+pyclaw_p4est_t *
 pyclaw_p4est_new (void)
 {
-  p4est_connectivity_t * conn;
-  p4est_t              * p4est;
+  pyclaw_p4est_t * pp;
 
-  conn = p4est_connectivity_new_unitsquare ();
-  p4est = p4est_new (MPI_COMM_WORLD, conn, 0, NULL, NULL);
+  pp = SC_ALLOC (pyclaw_p4est_t, 1);
+  pp->conn = p4est_connectivity_new_unitsquare ();
+  pp->p4est = p4est_new (MPI_COMM_WORLD, pp->conn, 0, NULL, NULL);
+  pp->ghost = p4est_ghost_new (pp->p4est, P4EST_CONNECT_FULL);
+  pp->mesh = p4est_mesh_new (pp->p4est, pp->ghost, P4EST_CONNECT_FULL);
+  pp->mesh_quad_to_half_num =
+    (p4est_locidx_t) pp->mesh->quad_to_half->elem_count;
+  pp->mesh_quad_to_half_entries =
+    (p4est_locidx_t *) pp->mesh->quad_to_half->array;
+  pp->test_number = 22222;
 
-  /* Contrary to common p4est usage we rely on conn kept alive in p4est */
-  return p4est;
+  return pp;
 }
 
 void
-pyclaw_p4est_destroy (p4est_t * p4est)
+pyclaw_p4est_destroy (pyclaw_p4est_t * pp)
 {
-  p4est_connectivity_t * conn;
+  p4est_mesh_destroy (pp->mesh);
+  p4est_ghost_destroy (pp->ghost);
+  p4est_destroy (pp->p4est);
+  p4est_connectivity_destroy (pp->conn);
 
-  conn = p4est->connectivity;
-  p4est_destroy (p4est);
-  p4est_connectivity_destroy (conn);
+  SC_FREE (pp);
 }
 
 /* 3D p4est routines */
 
-p8est_t *
+typedef struct pyclaw_p8est {
+  p8est_connectivity_t * conn;
+  p8est_t * p4est;
+  p8est_ghost_t * ghost;
+  p8est_mesh_t * mesh;
+  /* these two variables expose members of mesh->quad_to_half */
+  p4est_locidx_t mesh_quad_to_half_num;
+  p4est_locidx_t * mesh_quad_to_half_entries;
+  int test_number;
+}
+pyclaw_p8est_t;
+
+pyclaw_p8est_t *
 pyclaw_p8est_new (void)
 {
-  p8est_connectivity_t * conn;
-  p8est_t              * p8est;
+  pyclaw_p8est_t * pp;
 
-  conn = p8est_connectivity_new_unitcube ();
-  p8est = p8est_new (MPI_COMM_WORLD, conn, 0, NULL, NULL);
+  pp = SC_ALLOC (pyclaw_p8est_t, 1);
+  pp->conn = p8est_connectivity_new_unitcube ();
+  pp->p4est = p8est_new (MPI_COMM_WORLD, pp->conn, 0, NULL, NULL);
+  pp->ghost = p8est_ghost_new (pp->p4est, P4EST_CONNECT_FULL);
+  pp->mesh = p8est_mesh_new (pp->p4est, pp->ghost, P4EST_CONNECT_FULL);
+  pp->mesh_quad_to_half_num =
+    (p4est_locidx_t) pp->mesh->quad_to_half->elem_count;
+  pp->mesh_quad_to_half_entries =
+    (p4est_locidx_t *) pp->mesh->quad_to_half->array;
+  pp->test_number = 33333;
 
-  /* Contrary to common p4est usage we rely on conn kept alive in p4est */
-  return p8est;
+  return pp;
 }
 
 void
-pyclaw_p8est_destroy (p8est_t * p8est)
+pyclaw_p8est_destroy (pyclaw_p8est_t * pp)
 {
-  p8est_connectivity_t * conn;
+  p8est_mesh_destroy (pp->mesh);
+  p8est_ghost_destroy (pp->ghost);
+  p8est_destroy (pp->p4est);
+  p8est_connectivity_destroy (pp->conn);
 
-  conn = p8est->connectivity;
-  p8est_destroy (p8est);
-  p8est_connectivity_destroy (conn);
+  SC_FREE (pp);
 }
