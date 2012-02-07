@@ -12,10 +12,17 @@ include $(HOME)/stuff/build/p4est-mpi/local/etc/Makefile.p4est.mk
 # Default target "p4est"
 p4est: pyclaw_p4est.so
 
+# Compile p4est .c into .o files
+.c.o:
+	$(P4EST_CC) $(P4EST_CFLAGS) $(P4EST_CPPFLAGS) \
+	-fPIC -c $< -o $@
+
 # This is the p4est interface library
-pyclaw_p4est.so: pyclaw_p4est.c
+pyclaw_p4est.so: pyclaw_p4est.o pyclaw_p4est_2d.o pyclaw_p4est_3d.o
 	$(P4EST_CC) $(P4EST_CFLAGS) $(P4EST_CPPFLAGS) \
 	$(P4EST_LDFLAGS) $(P4EST_LIBS) \
-	-fPIC -shared -o $@ $<
+	-fPIC -shared -o $@ $^
+
+# pyclaw_p4est.so: pyclaw_p4est.h pyclaw_p4est_2d.h pyclaw_p4est_3d.h
 
 .PHONY: p4est
