@@ -1,0 +1,41 @@
+
+# Edit this include path depending on where p4est is installed
+# 1. Download p4est-x.y.z from http://www.p4est.org//
+# 2. Unpack, cd into p4est directory
+# 3. ./configure --enable-mpi CFLAGS="-Wall -g -O2" or similar
+# 4. make -j 8; make install
+# 5. The p4est installation will be in the "local" subdirectory
+#
+# This included Makefile pulls in the (MPI) compiler and flags used for p4est
+include $(P4EST)/local/etc/Makefile.p4est.mk
+
+OBJECTS = \
+	$(PYCLAW)/src/pyclaw/pyclaw_p4est.o \
+	$(PYCLAW)/src/pyclaw/pyclaw_p4est_2d.o \
+	$(PYCLAW)/src/pyclaw/pyclaw_p4est_3d.o
+    
+HEADERS = \
+	$(PYCLAW)/src/pyclaw/pyclaw_p4est.h \
+	$(PYCLAW)/src/pyclaw/pyclaw_p4est_2d.h \
+	$(PYCLAW)/src/pyclaw/pyclaw_p4est_3d.h
+
+# Default target "p4est"
+p4est: pyclaw_p4est.so
+
+# Compile p4est .c into .o files
+.c.o:
+	$(P4EST_CC) $(P4EST_CFLAGS) $(P4EST_CPPFLAGS) \
+	-fPIC -c $< -o $@
+
+# This is the p4est interface library
+pyclaw_p4est.so: $(OBJECTS)
+	$(P4EST_CC) $(P4EST_CFLAGS) $(P4EST_CPPFLAGS) \
+	$(P4EST_LDFLAGS) $(P4EST_LIBS) \
+	-fPIC -shared -o $@ $^
+
+pyclaw_p4est.so: $(HEADERS)
+
+clean:
+	rm -f pyclaw_p4est*.o pyclaw_p4est*.so
+
+.PHONY: p4est clean
