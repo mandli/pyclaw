@@ -150,6 +150,23 @@ class ClawSolver(Solver):
                 
         return True
             
+            
+    def backup_solution(self,solution):
+        r"""Backup current solution for variable time stepping rejection.
+        
+        In this version, we only need to backup the single state.
+        """
+        self._q_backup = solution.state.q.copy('F')
+        self._t_old = solution.t
+    
+    def recall_backup(self,solution):
+        r"""Replace the solution with the backuped data.
+        
+        In this version, we only need to recall the single state."""
+        solution.state.q = self._q_backup
+        solution.t = self._t_old
+        
+            
     def check_cfl_settings(self):
         pass
 
