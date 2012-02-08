@@ -1,5 +1,6 @@
 
 import pyclaw
+import amr
 from ctypes import *
 
 # Wrap p4est composite structures with ctypes
@@ -94,8 +95,8 @@ class p4est_Domain (pyclaw.geometry.Domain):
            
            mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
            
-           x = pyclaw.Dimension('x',  leaf.contents.lowerleft[0] , leaf.contents.upperright[0] , 16)
-           y = pyclaw.Dimension('y', leaf.contents.lowerleft[1] , leaf.contents.upperright[1], 16)
+           x = pyclaw.Dimension('x',  leaf.contents.lowerleft[0] , leaf.contents.upperright[0] , 64)
+           y = pyclaw.Dimension('y', leaf.contents.lowerleft[1] , leaf.contents.upperright[1], 64)
            
            patch = pyclaw.geometry.Patch ([x, y])
            patch.patch_index = leaf.contents.total_quad
@@ -107,13 +108,4 @@ class p4est_Domain (pyclaw.geometry.Domain):
 
            # Finalize MPI. TODO: Do this in a generic routine
            libp4est.pyclaw_MPI_Finalize ()
-
-if __name__ == "__main__":
-    # This is code for testing
-    x = pyclaw.Dimension('x', 0.0, 1.0, 64)
-    y = pyclaw.Dimension('y', 0.0, 1.0, 64)
-    domain = p4est_Domain ([x, y])
-    test_solution = pyclaw.Solution(domain,2,0)
-    print test_solution
-    for (i,patch) in enumerate(test_solution.domain.patches):
-        print patch
+    

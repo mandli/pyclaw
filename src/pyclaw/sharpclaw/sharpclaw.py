@@ -143,6 +143,60 @@ class SharpClawSolver(Solver):
         # Call general initialization function
         super(SharpClawSolver,self).__init__()
         
+        
+    def setup(self,solution):
+        """
+        Allocate RK stage arrays and fortran routine work arrays.
+        """
+        self.num_ghost = (self.weno_order+1)/2
+
+        # This is a hack to deal with the fact that petsc4py
+        # doesn't allow us to change the stencil_width (num_ghost)
+        state = solution.state
+        state.set_num_ghost(self.num_ghost)
+        # End hack
+
+        self.allocate_rk_stages(solution)
+        self.set_mthlim()
+ 
+        state = solution.states[0]
+
+        if self.kernel_language=='Fortran':
+            if self.num_dim == 1:
+                from sharpclaw1 import clawparams, workspace, reconstruct
+                import sharpclaw1
+                state.set_cparam(sharpclaw1)
+            elif self.num_dim == 2:
+                from sharpclaw2 import clawparams, workspace, reconstruct
+                import sharpclaw2
+                state.set_cparam(sharpclaw2)
+            self.set_fortran_parameters(state,clawparams,workspace,reconstruct)
+
+        self.qbc = self.allocate_bc_arrays(state)
+
+    def teardown(self):
+        r"""
+        Deallocate F90 module arrays.
+        Also delete Fortran objects, which otherwise tend to persist in Python sessions.
+        """
+        if self.kernel_language=='Fortran':
+            if self.num_dim == 1:
+                from sharpclaw1 import clawparams, workspace, reconstruct
+                clawparams.dealloc_clawparams()
+                workspace.dealloc_workspace(self.char_decomp)
+                reconstruct.dealloc_recon_workspace(clawparams.lim_type,clawparams.char_decomp)
+                import sharpclaw1
+                # print 'deleting sharpclaw1 object'
+                del sharpclaw1, clawparams, workspace, reconstruct
+            elif self.num_dim == 2:
+                from sharpclaw2 import clawparams, workspace, reconstruct
+                workspace.dealloc_workspace(self.char_decomp)
+                reconstruct.dealloc_recon_workspace(clawparams.lim_type,clawparams.char_decomp)
+                clawparams.dealloc_clawparams()
+                import sharpclaw2
+                del sharpclaw2
+
+        
     # ========== Time stepping routines ======================================
     def step(self,solution):
         """Evolve q over one time step.
@@ -323,46 +377,6 @@ class SharpClawSolver1D(SharpClawSolver):
         super(SharpClawSolver1D,self).__init__()
 
 
-    def setup(self,solution):
-        """
-        Allocate RK stage arrays and fortran routine work arrays.
-        """
-        self.num_ghost = (self.weno_order+1)/2
-
-        # This is a hack to deal with the fact that petsc4py
-        # doesn't allow us to change the stencil_width (num_ghost)
-        state = solution.state
-        state.set_num_ghost(self.num_ghost)
-        # End hack
-
-        self.allocate_rk_stages(solution)
-        self.set_mthlim()
- 
-        state = solution.states[0]
-
-        if self.kernel_language=='Fortran':
-            from sharpclaw1 import clawparams, workspace, reconstruct
-            import sharpclaw1
-            state.set_cparam(sharpclaw1)
-            self.set_fortran_parameters(state,clawparams,workspace,reconstruct)
-
-        self.allocate_bc_arrays(state)
-
-    def teardown(self):
-        r"""
-        Deallocate F90 module arrays.
-        Also delete Fortran objects, which otherwise tend to persist in Python sessions.
-        """
-        if self.kernel_language=='Fortran':
-            from sharpclaw1 import clawparams, workspace, reconstruct
-            clawparams.dealloc_clawparams()
-            workspace.dealloc_workspace(self.char_decomp)
-            reconstruct.dealloc_recon_workspace(clawparams.lim_type,clawparams.char_decomp)
-            import sharpclaw1
-            print 'deleting sharpclaw1 object'
-            del sharpclaw1, clawparams, workspace, reconstruct
-
-
     def dq_hyperbolic(self,state):
         r"""
         Compute dq/dt * (delta t) for the hyperbolic hyperbolic system.
@@ -492,45 +506,6 @@ class SharpClawSolver2D(SharpClawSolver):
         self.num_dim = 2
 
         super(SharpClawSolver2D,self).__init__()
-
-
-    def setup(self,solution):
-        """
-        Allocate RK stage arrays and fortran routine work arrays.
-        """
-        self.num_ghost = (self.weno_order+1)/2
-
-        # This is a hack to deal with the fact that petsc4py
-        # doesn't allow us to change the stencil_width (num_ghost)
-        state = solution.state
-        state.set_num_ghost(self.num_ghost)
-        # End hack
-
-        self.allocate_rk_stages(solution)
-        self.set_mthlim()
-
-        state = solution.states[0]
- 
-        if self.kernel_language=='Fortran':
-            from sharpclaw2 import clawparams, workspace, reconstruct
-            import sharpclaw2
-            state.set_cparam(sharpclaw2)
-            self.set_fortran_parameters(state,clawparams,workspace,reconstruct)
-
-        self.allocate_bc_arrays(state)
-
-    def teardown(self):
-        r"""
-        Deallocate F90 module arrays.
-        Also delete Fortran objects, which otherwise tend to persist in Python sessions.
-        """
-        if self.kernel_language=='Fortran':
-            from sharpclaw2 import clawparams, workspace, reconstruct
-            workspace.dealloc_workspace(self.char_decomp)
-            reconstruct.dealloc_recon_workspace(clawparams.lim_type,clawparams.char_decomp)
-            clawparams.dealloc_clawparams()
-            import sharpclaw2
-            del sharpclaw2
 
 
     def dq_hyperbolic(self,state):

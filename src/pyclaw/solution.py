@@ -81,13 +81,13 @@ class Solution(object):
     
     # ========== Properties ==================================================
     @property
-    def state(self):
-        r"""(:class:`State`) - Base state is returned"""
-        return self._state_container.states[0]
-    @property
     def patch(self):
         r"""(:class:`Patch`) - Base state's patch is returned"""
         return self.domain.patch
+    @property
+    def state(self):
+        r""""""
+        return self.states[0]
 
     @property
     def t(self):
@@ -165,6 +165,7 @@ class Solution(object):
         """
         
         self.domain = None
+        self.states = []
         # If arg is non-zero, we are reading in a solution, otherwise, we
         # create an empty Solution
         if len(arg) > 0:
@@ -175,9 +176,9 @@ class Solution(object):
                 # Single State
                 if isinstance(arg[0],State):
                     self.states = [arg[0]]
+                    self.domain = Domain(arg[0].patch)
                 elif isinstance(arg[0],Domain):
                     self.domain = arg[0]
-                    self.states = []
                     # TODO: assuming num_eqn and num_aux are being added here
                     num_eqn = arg[1]
                     num_aux = arg[2]

@@ -16,6 +16,7 @@ class BC():
     extrap    = 1
     periodic   = 2
     wall = 3
+    internal = 4
 
 #################### Dummy routines ######################
 def default_compute_gauge_values(q,aux):
@@ -144,8 +145,13 @@ class Solver(object):
         self.num_waves = None #Must be set later to agree with Riemann solver
         self.so_name = None #Can remove this after merging fwaves commit
         self.qbc = None
+        self.bc_upper_neighbor = []
+        self.bc_lower_neighbor = []
         self.auxbc = None
         self.rp = None
+        
+        self.cfl_desired = 0.9
+        self.cfl_max = 1.0
 
         # select package to build solver objects from, by default this will be
         # the package that contains the module implementing the derived class
@@ -190,6 +196,9 @@ class Solver(object):
         self.qbc          = None
         r""" Array to hold ghost cell values.  This is the one that gets passed
         to the Fortran code.  """
+        
+        self.auxbc        = None
+        r"""Array to hold ghost cell values of aux array."""
 
         self._isinitialized = True
 
@@ -269,13 +278,16 @@ class Solver(object):
         import numpy as np
         qbc_dim = [n+2*self.num_ghost for n in state.grid.num_cells]
         qbc_dim.insert(0,state.num_eqn)
-        self.qbc = np.zeros(qbc_dim,order='F')
+        qbc = np.zeros(qbc_dim,order='F')
 
         auxbc_dim = [n+2*self.num_ghost for n in state.grid.num_cells]
         auxbc_dim.insert(0,state.num_aux)
-        self.auxbc = np.empty(auxbc_dim,order='F')
+        auxbc = np.empty(auxbc_dim,order='F')
         if state.num_aux>0:
             self.apply_aux_bcs(state)
+            
+        return qbc,auxbc
+        
 
     def apply_q_bcs(self,state):
         r"""
@@ -330,6 +342,9 @@ class Solver(object):
                         self.qbc_lower(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
                     else:
                         pass #Handled automatically by PETSc
+                elif self.bc_lower[idim] == BC.internal:
+                    self.bc_lower_neighbor[idim] = np.rollaxis(self.bc_lower_neighbor[idim],idim+1,1)
+                    self.qbc_lower(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
                 else:
                     self.qbc_lower(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
 
@@ -342,6 +357,9 @@ class Solver(object):
                         self.qbc_upper(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
                     else:
                         pass #Handled automatically by PETSc
+                elif self.bc_upper[idim] == BC.internal:
+                    self.bc_upper_neighbor[idim] = np.rollaxis(self.bc_upper_neighbor[idim],idim+1,1)
+                    self.qbc_upper(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
                 else:
                     self.qbc_upper(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
 
@@ -376,6 +394,9 @@ class Solver(object):
             for i in xrange(self.num_ghost):
                 qbc[:,i,...] = qbc[:,2*self.num_ghost-1-i,...]
                 qbc[idim+1,i,...] = -qbc[idim+1,2*self.num_ghost-1-i,...] # Negate normal velocity
+        elif self.bc_lower[idim] == BC.internal:
+            for i in xrange(self.num_ghost):
+                qbc[:,:self.num_ghost,...] = self.bc_lower_neighbor[idim][:,-2*self.num_ghost:-self.num_ghost,...]
         else:
             raise NotImplementedError("Boundary condition %s not implemented" % self.bc_lower)
 
@@ -411,6 +432,9 @@ class Solver(object):
             for i in xrange(self.num_ghost):
                 qbc[:,-i-1,...] = qbc[:,-2*self.num_ghost+i,...]
                 qbc[idim+1,-i-1,...] = -qbc[idim+1,-2*self.num_ghost+i,...] # Negate normal velocity
+        elif self.bc_upper[idim] == BC.internal:
+            for i in xrange(self.num_ghost):
+                qbc[:,-self.num_ghost:,...] = self.bc_upper_neighbor[idim][:,self.num_ghost:2*self.num_ghost,...]
         else:
             raise NotImplementedError("Boundary condition %s not implemented" % self.bc_lower)
 
@@ -515,6 +539,8 @@ class Solver(object):
         elif self.aux_bc_lower[idim] == BC.wall:
             for i in xrange(self.num_ghost):
                 auxbc[:,i,...] = auxbc[:,2*self.num_ghost-1-i,...]
+        elif self.aux_bc_lower[idim] == BC.internal:
+            raise NotImplemented("Aux neigbor bcs not implemented.")
         elif self.aux_bc_lower[idim] is None:
             raise Exception("One or more of the aux boundary conditions aux_bc_upper has not been specified.")
         else:
@@ -551,6 +577,8 @@ class Solver(object):
         elif self.aux_bc_upper[idim] == BC.wall:
             for i in xrange(self.num_ghost):
                 auxbc[:,-i-1,...] = auxbc[:,-2*self.num_ghost+i,...]
+        elif self.aux_bc_upper[idim] == BC.internal:
+            raise NotImplemented("Aux neigbor bcs not implemented.")
         elif self.aux_bc_lower[idim] is None:
             raise Exception("One or more of the aux boundary conditions aux_bc_lower has not been specified.")
         else:
@@ -696,7 +724,7 @@ class Solver(object):
         r"""Write solution (or derived quantity) values at each gauge coordinate
             to file.
         """
-        for i,gauge in enumerate(solution.state.patch.gauges):
+        for i,gauge in enumerate(solution.states[0].patch.gauges):
             x=gauge[0]; y=gauge[1]
             aux=solution.state.aux[:,x,y]
             q=solution.state.q[:,x,y]

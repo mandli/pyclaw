@@ -92,6 +92,9 @@ class ClawSolver(Solver):
         self.cfl_desired = 0.9
         self._mthlim = self.limiters
         self._method = None
+        
+        self._q_backup = None 
+        self._t_old = None
 
         # Call general initialization function
         super(ClawSolver,self).__init__(claw_package)
@@ -237,7 +240,9 @@ class ClawSolver(Solver):
         elif self.num_dim>1:
             raise Exception('Only Fortran kernels are supported in multi-D.')
 
-        self.allocate_bc_arrays(solution.states[0])
+        self.qbc,self.auxbc = self.allocate_bc_arrays(solution.states[0])
+        self.bc_lower_neighbor = [None] * self.num_dim
+        self.bc_upper_neighbor = [None] * self.num_dim
 
 
     def set_fortran_parameters(self,solution):
