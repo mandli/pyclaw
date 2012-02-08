@@ -83,7 +83,7 @@ class Solution(object):
     @property
     def state(self):
         r"""(:class:`State`) - Base state is returned"""
-        return self.states[0]
+        return self._state_container.states[0]
     @property
     def patch(self):
         r"""(:class:`Patch`) - Base state's patch is returned"""
@@ -163,8 +163,7 @@ class Solution(object):
         
         See :class:`Solution` for more info.
         """
-        self.states = []
-        r"""(list) - List of states in this solution"""
+        
         self.domain = None
         # If arg is non-zero, we are reading in a solution, otherwise, we
         # create an empty Solution
@@ -174,14 +173,17 @@ class Solution(object):
                 self.read(frame,**kargs)
             else:
                 # Single State
-                if isinstance(arg[0],State):
-                    self.states.append(arg[0])
+                if isinstance(arg[0],State) or isinstance(arg[0],Domain)
+                   isinstance(arg[0],list):
+                    self.states = StateContainer(arg[0])
                 elif isinstance(arg[0],list):
                     # List of States
                     if isinstance(arg[0][0],State):
-                        self.states = arg[0]
+                        self.states = StateContainer(arg[0])
                     else:
                         raise Exception("Invalid argument list")
+                if isinstance(arg[0],Domain):
+                    self.states = StateContainer(arg[0])
                 if isinstance(arg[1],Domain):
                     self.domain = arg[1]
                 else:

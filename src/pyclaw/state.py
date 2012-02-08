@@ -5,10 +5,71 @@ Module containing all Pyclaw solution objects
 
 :Authors:
     David I. Ketcheson -- Initial version (June 2011)
+    Kyle T. Mandli -- Add StateContainer (Feb 2012)
 """
 
 import numpy as np
 
+class StateContainer(object):
+    r""""""
+
+    @property
+    def patch(self):
+        r""""""
+        return self._get_base_state_attribute('patch')
+
+    @property
+    def p(self):
+        r""""""
+        return self._get_base_state_attribute('p')
+
+    @property
+    def F(self):
+        r""""""
+        return self._get_base_state_attribute('F')
+
+    @property
+    def problem_data(self):
+        r""""""
+        return self._get_base_state_attribute('problem_data')
+
+    @property
+    def t(self):
+        r""""""
+        return self._get_base_state_attribute('t')
+
+    @property
+    def index_capa(self):
+        r""""""
+        return self._get_base_state_attribute('index_capa')
+
+    @property
+    def q(self):
+        r""""""
+        return self._get_base_state_attribute('q')
+
+    @property
+    def aux(self):
+        r""""""
+        return self._get_base_state_attribute('aux')
+    
+    def __init__(self,geom,num_eqn,num_aux=0):
+        if isinstance(geom,pyclaw.geometry.Domain):
+            self.domain = geom
+            self.states = []
+            for patch in self.domain.patches:
+                self.states.append(State(patch,num_eqn,num_aux))
+
+    def _get_base_state_attribute(self, name):
+        r"""
+        Return base patch attribute name
+        
+        :Output:
+         - (id) - Value of attribute from ``self.patches[0]``
+        """
+        return getattr(self.states[0],name)
+        
+    
 class State(object):
     r"""
     A PyClaw State object contains the current state on a particular patch,
