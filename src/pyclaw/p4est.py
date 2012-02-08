@@ -4,48 +4,48 @@ from ctypes import *
 
 # Wrap p4est composite structures with ctypes
 class pyclaw_sc_array (Structure):
-	_fields_ = [("elem_size", c_ulonglong),
-		    ("elem_count", c_ulonglong),
-		    ("byte_alloc", c_longlong),
+        _fields_ = [("elem_size", c_ulonglong),
+                    ("elem_count", c_ulonglong),
+                    ("byte_alloc", c_longlong),
                     ("array", c_void_p)]
 pyclaw_sc_array_pointer = POINTER (pyclaw_sc_array)
 class pyclaw_mesh (Structure):
-	_fields_ = [("local_num_vertices", c_int),
-		    ("local_num_quadrants", c_int),
-		    ("ghost_num_quadrants", c_int),
-		    ("vertices", c_void_p),
-		    ("quad_to_vertex", POINTER (c_int)),
-		    ("ghost_to_proc", POINTER (c_int)),
-		    ("ghost_to_index", POINTER (c_int)),
-		    ("quad_to_quad", POINTER (c_int)),
-		    ("quad_to_face", POINTER (c_byte)),
-		    ("quad_to_half", pyclaw_sc_array_pointer)]
+        _fields_ = [("local_num_vertices", c_int),
+                    ("local_num_quadrants", c_int),
+                    ("ghost_num_quadrants", c_int),
+                    ("vertices", c_void_p),
+                    ("quad_to_vertex", POINTER (c_int)),
+                    ("ghost_to_proc", POINTER (c_int)),
+                    ("ghost_to_index", POINTER (c_int)),
+                    ("quad_to_quad", POINTER (c_int)),
+                    ("quad_to_face", POINTER (c_byte)),
+                    ("quad_to_half", pyclaw_sc_array_pointer)]
 pyclaw_mesh_pointer = POINTER (pyclaw_mesh)
 class pyclaw_pp (Structure):
-	_fields_ = [("P4EST_DIM", c_int),
-		    ("P4EST_HALF", c_int),
-		    ("P4EST_FACES", c_int),
-		    ("P4EST_CHILDREN", c_int),
-		    ("conn", c_void_p),
-		    ("p4est", c_void_p),
-		    ("ghost", c_void_p),
-		    ("mesh", pyclaw_mesh_pointer)]
+        _fields_ = [("P4EST_DIM", c_int),       # space dimension
+                    ("P4EST_HALF", c_int),      # small faces   2^(dim - 1)
+                    ("P4EST_FACES", c_int),     # faces around  2 * dim
+                    ("P4EST_CHILDREN", c_int),  # children      2^dim
+                    ("conn", c_void_p),
+                    ("p4est", c_void_p),
+                    ("ghost", c_void_p),
+                    ("mesh", pyclaw_mesh_pointer)]
 pyclaw_pp_pointer = POINTER (pyclaw_pp)
 
 def pyclaw_pp_get_num_leaves (pp):
-	return pp.contents.mesh.contents.local_num_quadrants
+        return pp.contents.mesh.contents.local_num_quadrants
 
 # Wrap leaf iterator with ctypes
 class pyclaw_leaf (Structure):
-	_fields_ = [("pp", pyclaw_pp_pointer),
-		    ("level", c_int),
-		    ("which_tree", c_int),
-		    ("which_quad", c_int),
-		    ("total_quad", c_int),
-		    ("tree", c_void_p),
-		    ("quad", c_void_p),
-		    ("lowerleft", c_double * 3),
-		    ("upperright", c_double * 3)]
+        _fields_ = [("pp", pyclaw_pp_pointer),
+                    ("level", c_int),
+                    ("which_tree", c_int),
+                    ("which_quad", c_int),
+                    ("total_quad", c_int),
+                    ("tree", c_void_p),
+                    ("quad", c_void_p),
+                    ("lowerleft", c_double * 3),
+                    ("upperright", c_double * 3)]
 pyclaw_leaf_pointer = POINTER (pyclaw_leaf)
 
 # Dynamically link in the pyclaw p4est interface
@@ -57,50 +57,50 @@ libp4est.pyclaw_p4est_leaf_next.restype = pyclaw_leaf_pointer;
 # subclass Domain to handle multiple patches presented by p4est
 class p4est_Domain (pyclaw.geometry.Domain):
 
-	# Expect geom to be a list of 2 dimensions (2D here for now).
-	def __init__ (self, geom):
-		# Initialize MPI. TODO: Do this in a generic routine
-		libp4est.pyclaw_MPI_Init ()
+        # Expect geom to be a list of 2 dimensions (2D here for now).
+        def __init__ (self, geom):
+                # Initialize MPI. TODO: Do this in a generic routine
+                libp4est.pyclaw_MPI_Init ()
 
-		# Create a 2D p4est internal state on a square
-		self.pp = libp4est.pyclaw_p4est_new ()
+                # Create a 2D p4est internal state on a square
+                self.pp = libp4est.pyclaw_p4est_new ()
 
-		print "Number of leaves:", \
-			pyclaw_pp_get_num_leaves (self.pp)
+                print "Number of leaves:", \
+                        pyclaw_pp_get_num_leaves (self.pp)
 
-		# Number of faces of a leaf (4 in 2D, 6 in 3D)
-		P4EST_FACES = self.pp.contents.P4EST_FACES
+                # Number of faces of a leaf (4 in 2D, 6 in 3D)
+                P4EST_FACES = self.pp.contents.P4EST_FACES
 
-		# Mesh is the lookup table for leaf neighbors
-		mesh = self.pp.contents.mesh
+                # Mesh is the lookup table for leaf neighbors
+                mesh = self.pp.contents.mesh
 
-		# Use the leaf iterator to loop over all leafs
-		leaf = libp4est.pyclaw_p4est_leaf_first (self.pp)
-		while (leaf):
+                # Use the leaf iterator to loop over all leafs
+                leaf = libp4est.pyclaw_p4est_leaf_first (self.pp)
+                while (leaf):
 
-			# This is a demonstration to show off the structure
-			print "Py leaf level", leaf.contents.level, \
-				"tree", leaf.contents.which_tree, \
-				"tree_leaf", leaf.contents.which_quad, \
-				"local_leaf", leaf.contents.total_quad
-			for nface in range (self.pp.contents.P4EST_FACES):
-				print "Py leaf face", nface, "leaf", \
+                        # This is a demonstration to show off the structure
+                        print "Py leaf level", leaf.contents.level, \
+                                "tree", leaf.contents.which_tree, \
+                                "tree_leaf", leaf.contents.which_quad, \
+                                "local_leaf", leaf.contents.total_quad
+                        for nface in range (self.pp.contents.P4EST_FACES):
+                                print "Py leaf face", nface, "leaf", \
  mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
 
-			# TODO: Do something with leaf
-	# 		# TODO: change coordinates for subpatch by geom
-	# 		x = pyclaw.Dimension('x', -1.0, 1.0, 200)
-	# 		y = pyclaw.Dimension('y', -1.0, 1.0, 200)
-	#
-	# 		self.grids.append (Grid ([x, y]))
+                        # TODO: Do something with leaf
+        #               # TODO: change coordinates for subpatch by geom
+        #               x = pyclaw.Dimension('x', -1.0, 1.0, 200)
+        #               y = pyclaw.Dimension('y', -1.0, 1.0, 200)
+        #
+        #               self.grids.append (Grid ([x, y]))
 
-			leaf = libp4est.pyclaw_p4est_leaf_next (leaf)
+                        leaf = libp4est.pyclaw_p4est_leaf_next (leaf)
 
-	def __del__ (self):
-		libp4est.pyclaw_p4est_destroy (self.pp)
+        def __del__ (self):
+                libp4est.pyclaw_p4est_destroy (self.pp)
 
-		# Finalize MPI. TODO: Do this in a generic routine
-		libp4est.pyclaw_MPI_Finalize ()
+                # Finalize MPI. TODO: Do this in a generic routine
+                libp4est.pyclaw_MPI_Finalize ()
 
 # This is code for testing
 x = pyclaw.Dimension('x', 0.0, 1.0, 64)
