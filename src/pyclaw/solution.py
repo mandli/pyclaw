@@ -173,18 +173,23 @@ class Solution(object):
                 self.read(frame,**kargs)
             else:
                 # Single State
-                if isinstance(arg[0],State) or isinstance(arg[0],Domain)
-                   isinstance(arg[0],list):
-                    self.states = StateContainer(arg[0])
+                if isinstance(arg[0],State):
+                    self.states = [arg[0]]
+                elif isinstance(arg[0],Domain):
+                    self.domain = arg[0]
+                    self.states = []
+                    # TODO: assuming num_eqn and num_aux are being added here
+                    num_eqn = arg[1]
+                    num_aux = arg[2]
+                    for patch in self.domain.patches:
+                        self.states.append(State(patch,num_eqn,num_aux))
                 elif isinstance(arg[0],list):
                     # List of States
                     if isinstance(arg[0][0],State):
-                        self.states = StateContainer(arg[0])
+                        self.states = arg[0]
                     else:
                         raise Exception("Invalid argument list")
-                if isinstance(arg[0],Domain):
-                    self.states = StateContainer(arg[0])
-                if isinstance(arg[1],Domain):
+                elif isinstance(arg[1],Domain):
                     self.domain = arg[1]
                 else:
                     if not isinstance(arg[1],list):
