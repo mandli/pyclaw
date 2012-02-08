@@ -609,16 +609,13 @@ class Solver(object):
         # Main time-stepping loop
         for n in xrange(self.max_steps):
             
-            state = solution.state
-            
             # Adjust dt so that we hit tend exactly if we are near tend
             if solution.t + self.dt > tend and tstart < tend and not take_one_step:
                 self.dt = tend - solution.t 
 
             # Keep a backup in case we need to retake a time step
             if self.dt_variable:
-                q_backup = state.q.copy('F')
-                told = solution.t
+                self.backup_solution(solution)
             
             self.step(solution)
 
@@ -646,8 +643,7 @@ class Solver(object):
                 # Reject this step
                 self.logger.debug("Rejecting time step, CFL number too large")
                 if self.dt_variable:
-                    state.q = q_backup
-                    solution.t = told
+                    self.recall_backup(solution)
                 else:
                     # Give up, we cannot adapt, abort
                     self.status['cflmax'] = \
@@ -673,6 +669,7 @@ class Solver(object):
 
         return self.status
 
+
     def step(self,solution):
         r"""
         Take one step
@@ -681,6 +678,16 @@ class Solver(object):
         would like to use the default time-stepping in evolve_to_time.
         """
         raise NotImplementedError("No stepping routine has been defined!")
+
+
+    def backup_solution(self,solution):
+        r"""Backup current solution for variable time stepping rejection."""
+        raise NotImplementedError("No solution backup ability implemented!")
+        
+    def recall_backup(self,solution):
+        r"""Replace the solution with the backuped data."""
+        raise NotImplementedError("No recall solution ability implemented!")
+        
 
     # ========================================================================
     #  Gauges
