@@ -51,9 +51,12 @@ pyclaw_leaf_pointer = POINTER (pyclaw_leaf)
 
 # Dynamically link in the pyclaw p4est interface
 libp4est = CDLL ("pyclaw_p4est.so")
-libp4est.pyclaw_p4est_new.restype = pyclaw_pp_pointer;
 libp4est.pyclaw_p4est_new.argtype = c_int;
+libp4est.pyclaw_p4est_new.restype = pyclaw_pp_pointer;
+libp4est.pyclaw_p4est_destroy.argtype = pyclaw_pp_pointer;
+libp4est.pyclaw_p4est_leaf_first.argtype = pyclaw_pp_pointer;
 libp4est.pyclaw_p4est_leaf_first.restype = pyclaw_leaf_pointer;
+libp4est.pyclaw_p4est_leaf_next.argtype = pyclaw_leaf_pointer;
 libp4est.pyclaw_p4est_leaf_next.restype = pyclaw_leaf_pointer;
 
 # subclass Domain to handle multiple patches presented by p4est
