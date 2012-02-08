@@ -59,52 +59,56 @@ libp4est.pyclaw_p4est_leaf_next.restype = pyclaw_leaf_pointer;
 class p4est_Domain (pyclaw.geometry.Domain):
 
         # Expect geom to be a list of 2 dimensions (2D here for now).
-        def __init__ (self, geom):
-                # Initialize MPI. TODO: Do this in a generic routine
-                libp4est.pyclaw_MPI_Init ()
+   def __init__ (self, geom):
+           # TODO: Handle multiple patches in a single domain
+           # Initialize MPI. TODO: Do this in a generic routine
+           libp4est.pyclaw_MPI_Init ()
 
-                # Create a 2D p4est internal state on a square
-                initial_level = 1
-                self.pp = libp4est.pyclaw_p4est_new (initial_level)
-                self.num_leaves = pyclaw_pp_get_num_leaves (self.pp)
+           # Create a 2D p4est internal state on a square
+           initial_level = 1
+           self.pp = libp4est.pyclaw_p4est_new (initial_level)
+           self.num_leaves = pyclaw_pp_get_num_leaves (self.pp)
 
-                # Number of faces of a leaf (4 in 2D, 6 in 3D)
-                P4EST_FACES = self.pp.contents.P4EST_FACES
+           # Number of faces of a leaf (4 in 2D, 6 in 3D)
+           P4EST_FACES = self.pp.contents.P4EST_FACES
 
-                # Mesh is the lookup table for leaf neighbors
-                mesh = self.pp.contents.mesh
+           # Mesh is the lookup table for leaf neighbors
+           mesh = self.pp.contents.mesh
 
-                # Use the leaf iterator to loop over all leafs
-                # If only a loop over leaf indices is needed,
-                # do instead: for leafindex in range (0, self.num_leaves)
-                leaf = libp4est.pyclaw_p4est_leaf_first (self.pp)
-                while (leaf):
+           # Use the leaf iterator to loop over all leafs
+           # If only a loop over leaf indices is needed,
+           # do instead: for leafindex in range (0, self.num_leaves)
+           leaf = libp4est.pyclaw_p4est_leaf_first (self.pp)
+           self.patches = []
+           while (leaf):
 
-                        # This is a demonstration to show off the structure
-                        print "Py leaf level", leaf.contents.level, \
-                                "tree", leaf.contents.which_tree, \
-                                "tree_leaf", leaf.contents.which_quad, \
-                                "local_leaf", leaf.contents.total_quad
-                        for nface in range (self.pp.contents.P4EST_FACES):
-                                print "Py leaf face", nface, "leaf", \
- mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
+               # This is a demonstration to show off the structure
+               print "Py leaf level", leaf.contents.level, \
+                       "tree", leaf.contents.which_tree, \
+                       "tree_leaf", leaf.contents.which_quad, \
+                       "local_leaf", leaf.contents.total_quad
+               for nface in range (self.pp.contents.P4EST_FACES):
+                       print "Py leaf face", nface, "leaf", \
 
-                        # TODO: Do something with leaf
-        #               # TODO: change coordinates for subpatch by geom
-        #               x = pyclaw.Dimension('x', -1.0, 1.0, 200)
-        #               y = pyclaw.Dimension('y', -1.0, 1.0, 200)
-        #
-        #               self.grids.append (Grid ([x, y]))
+               mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
+                   
+               x = pyclaw.Dimension('x',  leaf.contents.lowerleft[0] , leaf.contents.upperright[0] , 16)
+               y = pyclaw.Dimension('y', leaf.contents.lowerleft[1] , leaf.contents.upperright[1], 16)
+  
+               patch = pyclaw.geometry.Patch ([x, y])
+               self.patches.append (patch)
+               leaf = libp4est.pyclaw_p4est_leaf_next (leaf)
 
-                        leaf = libp4est.pyclaw_p4est_leaf_next (leaf)
+   def __del__ (self):
+           libp4est.pyclaw_p4est_destroy (self.pp)
 
-        def __del__ (self):
-                libp4est.pyclaw_p4est_destroy (self.pp)
+           # Finalize MPI. TODO: Do this in a generic routine
+           libp4est.pyclaw_MPI_Finalize ()
 
-                # Finalize MPI. TODO: Do this in a generic routine
-                libp4est.pyclaw_MPI_Finalize ()
-
-# This is code for testing
-x = pyclaw.Dimension('x', 0.0, 1.0, 64)
-y = pyclaw.Dimension('y', 0.0, 1.0, 64)
-domain = p4est_Domain ([x, y])
+if __name__ == "__main__":
+    # This is code for testing
+    x = pyclaw.Dimension('x', 0.0, 1.0, 64)
+    y = pyclaw.Dimension('y', 0.0, 1.0, 64)
+    domain = p4est_Domain ([x, y])
+    test_solution = pyclaw.Solution(domain)
+    print test_solution

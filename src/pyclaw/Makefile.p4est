@@ -7,7 +7,7 @@
 # 5. The p4est installation will be in the "local" subdirectory
 #
 # This included Makefile pulls in the (MPI) compiler and flags used for p4est
-include $(HOME)/stuff/build/p4est-mpi/local/etc/Makefile.p4est.mk
+include $(P4EST)/local/etc/Makefile.p4est.mk
 
 # Default target "p4est"
 p4est: pyclaw_p4est.so
