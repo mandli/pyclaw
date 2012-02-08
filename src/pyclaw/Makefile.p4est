@@ -23,6 +23,9 @@ pyclaw_p4est.so: pyclaw_p4est.o pyclaw_p4est_2d.o pyclaw_p4est_3d.o
 	$(P4EST_LDFLAGS) $(P4EST_LIBS) \
 	-fPIC -shared -o $@ $^
 
-# pyclaw_p4est.so: pyclaw_p4est.h pyclaw_p4est_2d.h pyclaw_p4est_3d.h
+pyclaw_p4est.so: pyclaw_p4est.h pyclaw_p4est_2d.h pyclaw_p4est_3d.h
 
-.PHONY: p4est
+clean:
+	rm -f pyclaw_p4est*.o pyclaw_p4est*.so
+
+.PHONY: p4est clean

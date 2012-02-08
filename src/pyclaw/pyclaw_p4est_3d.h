@@ -15,7 +15,7 @@ typedef struct pyclaw_p8est {
 }
 pyclaw_p8est_t;
 
-pyclaw_p8est_t * pyclaw_p8est_new (void);
+pyclaw_p8est_t * pyclaw_p8est_new (int initial_level);
 void             pyclaw_p8est_destroy (pyclaw_p8est_t * pp);
 
 /*** ITERATOR OVER THE FOREST LEAVES ***/
@@ -26,8 +26,8 @@ typedef struct pyclaw_p8est_leaf {
   p4est_topidx_t which_tree;
   p4est_locidx_t which_quad;
   p4est_locidx_t total_quad;
-  p4est_tree_t * tree;
-  p4est_quadrant_t * quad;
+  p8est_tree_t * tree;
+  p8est_quadrant_t * quad;
   double  lowerleft[3];
   double  upperright[3];
 }

@@ -51,6 +51,7 @@ pyclaw_leaf_pointer = POINTER (pyclaw_leaf)
 # Dynamically link in the pyclaw p4est interface
 libp4est = CDLL ("pyclaw_p4est.so")
 libp4est.pyclaw_p4est_new.restype = pyclaw_pp_pointer;
+libp4est.pyclaw_p4est_new.argtype = c_int;
 libp4est.pyclaw_p4est_leaf_first.restype = pyclaw_leaf_pointer;
 libp4est.pyclaw_p4est_leaf_next.restype = pyclaw_leaf_pointer;
 
@@ -63,10 +64,9 @@ class p4est_Domain (pyclaw.geometry.Domain):
                 libp4est.pyclaw_MPI_Init ()
 
                 # Create a 2D p4est internal state on a square
-                self.pp = libp4est.pyclaw_p4est_new ()
-
-                print "Number of leaves:", \
-                        pyclaw_pp_get_num_leaves (self.pp)
+                initial_level = 1
+                self.pp = libp4est.pyclaw_p4est_new (initial_level)
+                self.num_leaves = pyclaw_pp_get_num_leaves (self.pp)
 
                 # Number of faces of a leaf (4 in 2D, 6 in 3D)
                 P4EST_FACES = self.pp.contents.P4EST_FACES
@@ -75,6 +75,8 @@ class p4est_Domain (pyclaw.geometry.Domain):
                 mesh = self.pp.contents.mesh
 
                 # Use the leaf iterator to loop over all leafs
+                # If only a loop over leaf indices is needed,
+                # do instead: for leafindex in range (0, self.num_leaves)
                 leaf = libp4est.pyclaw_p4est_leaf_first (self.pp)
                 while (leaf):
 

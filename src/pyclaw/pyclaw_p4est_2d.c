@@ -10,7 +10,7 @@
 #endif
 
 pyclaw_p4est_t *
-pyclaw_p4est_new (void)
+pyclaw_p4est_new (int initial_level)
 {
   pyclaw_p4est_t * pp;
 
@@ -25,7 +25,7 @@ pyclaw_p4est_new (void)
   pp->conn = p8est_connectivity_new_unitcube ();
 #endif
   pp->p4est = p4est_new_ext (MPI_COMM_WORLD, pp->conn,
-			     0, 1, 1, 0, NULL, NULL);
+			     0, initial_level, 1, 0, NULL, NULL);
   pp->ghost = p4est_ghost_new (pp->p4est, P4EST_CONNECT_FULL);
   pp->mesh = p4est_mesh_new (pp->p4est, pp->ghost, P4EST_CONNECT_FULL);
 

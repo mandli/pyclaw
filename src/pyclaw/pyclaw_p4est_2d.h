@@ -15,7 +15,7 @@ typedef struct pyclaw_p4est {
 }
 pyclaw_p4est_t;
 
-pyclaw_p4est_t * pyclaw_p4est_new (void);
+pyclaw_p4est_t * pyclaw_p4est_new (int initial_level);
 void             pyclaw_p4est_destroy (pyclaw_p4est_t * pp);
 
 /*** ITERATOR OVER THE FOREST LEAVES ***/
