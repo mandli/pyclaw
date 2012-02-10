@@ -54,9 +54,12 @@ pyclaw_leaf_pointer = POINTER (pyclaw_leaf)
 
 # Dynamically link in the pyclaw p4est interface
 libp4est = CDLL ("pyclaw_p4est.so")
-libp4est.pyclaw_p4est_new.restype = pyclaw_pp_pointer;
 libp4est.pyclaw_p4est_new.argtype = c_int;
+libp4est.pyclaw_p4est_new.restype = pyclaw_pp_pointer;
+libp4est.pyclaw_p4est_destroy.argtype = pyclaw_pp_pointer;
+libp4est.pyclaw_p4est_leaf_first.argtype = pyclaw_pp_pointer;
 libp4est.pyclaw_p4est_leaf_first.restype = pyclaw_leaf_pointer;
+libp4est.pyclaw_p4est_leaf_next.argtype = pyclaw_leaf_pointer;
 libp4est.pyclaw_p4est_leaf_next.restype = pyclaw_leaf_pointer;
 
 # subclass Domain to handle multiple patches presented by p4est
@@ -84,19 +87,24 @@ class p4est_Domain (pyclaw.geometry.Domain):
        # do instead: for leafindex in range (0, self.num_leaves)
        leaf = libp4est.pyclaw_p4est_leaf_first (self.pp)
        self.patches = []
-       patch_counter = 0
+
+       # patch_counter = 0
+       # Use self.num_leaves instead
+       # Should be the same as the size of self.patches after this loop
        while (leaf):
-           patch_counter += 1
+           # patch_counter += 1
+           # Within this loop the leaf counter is leaf.contents.total_quad
+           # All indices in the p4est structures are 0-based
            
            # This is a demonstration to show off the structure
            print "Py leaf level", leaf.contents.level, \
            "tree", leaf.contents.which_tree, \
            "tree_leaf", leaf.contents.which_quad, \
            "local_leaf", leaf.contents.total_quad
-           for nface in range (self.pp.contents.P4EST_FACES):
-               print "Py leaf face", nface, "leaf", \
+           for face in range (P4EST_FACES):
+               print "Py leaf face", face, "leaf", \
            
-           mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
+           mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + face]
            
            x = pyclaw.Dimension('x', leaf.contents.lowerleft[0] , leaf.contents.upperright[0], 64)
            y = pyclaw.Dimension('y', leaf.contents.lowerleft[1] , leaf.contents.upperright[1], 64)
