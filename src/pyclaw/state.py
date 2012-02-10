@@ -116,6 +116,9 @@ class State(object):
 
         self.q   = self.new_array(num_eqn)
         self.aux = self.new_array(num_aux)
+        
+        # Deafult array ordering
+        self._ordering = "F"
 
     def __str__(self):
         output = "PyClaw State object\n"

@@ -142,22 +142,15 @@ class Solver(object):
         self.dt_max = 1e99
         self.max_steps = 1000
         self.dt_variable = True
-        self.num_waves = None #Must be set later to agree with Riemann solver
-        self.so_name = None #Can remove this after merging fwaves commit
+        self.num_waves = None # Must be set later to agree with Riemann solver
         self.qbc = None
-        self.bc_upper_neighbor = []
-        self.bc_lower_neighbor = []
         self.auxbc = None
         self.rp = None
-        
-        self.cfl_desired = 0.9
-        self.cfl_max = 1.0
 
         # select package to build solver objects from, by default this will be
         # the package that contains the module implementing the derived class
         # for example, if ClawSolver1D is implemented in 'petclaw.solver', then
         # the computed claw_package will be 'petclaw'
-        
         import sys
         if claw_package is not None and claw_package in sys.modules:
             self.claw_package = sys.modules[claw_package]
@@ -179,14 +172,20 @@ class Solver(object):
                        'numsteps':0 }
         
         # No default BCs; user must set them
-        self.bc_lower =    [None]*self.num_dim
-        self.bc_upper =    [None]*self.num_dim
+        self.bc_lower = [None]*self.num_dim
+        self.bc_upper = [None]*self.num_dim
         self.aux_bc_lower = [None]*self.num_dim
         self.aux_bc_upper = [None]*self.num_dim
+
+        # Internal boundary conditions
+        self.bc_upper_neighbor = [None]*self.num_dim
+        self.bc_lower_neighbor = [None]*self.num_dim
+        self.aux_bc_upper_neighbor = [None]*self.num_dim
+        self.aux_bc_lower_neighbor = [None]*self.num_dim
         
+        # User specified boundary condition functions
         self.user_bc_lower = None
         self.user_bc_upper = None
-
         self.user_aux_bc_lower = None
         self.user_aux_bc_upper = None
 
@@ -278,16 +277,13 @@ class Solver(object):
         import numpy as np
         qbc_dim = [n+2*self.num_ghost for n in state.grid.num_cells]
         qbc_dim.insert(0,state.num_eqn)
-        qbc = np.zeros(qbc_dim,order='F')
+        self.qbc = np.empty(qbc_dim,order=state._ordering)
 
         auxbc_dim = [n+2*self.num_ghost for n in state.grid.num_cells]
         auxbc_dim.insert(0,state.num_aux)
-        auxbc = np.empty(auxbc_dim,order='F')
-        if state.num_aux>0:
-            self.apply_aux_bcs(state)
-            
-        return qbc,auxbc
-        
+        self.auxbc = np.empty(auxbc_dim,order=state._ordering)
+        # if state.num_aux>0:
+        #     self.apply_aux_bcs(state)
 
     def apply_q_bcs(self,state):
         r"""
@@ -343,6 +339,7 @@ class Solver(object):
                     else:
                         pass #Handled automatically by PETSc
                 elif self.bc_lower[idim] == BC.internal:
+                    # This roll of axis is probably not correct...
                     self.bc_lower_neighbor[idim] = np.rollaxis(self.bc_lower_neighbor[idim],idim+1,1)
                     self.qbc_lower(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
                 else:
@@ -358,6 +355,7 @@ class Solver(object):
                     else:
                         pass #Handled automatically by PETSc
                 elif self.bc_upper[idim] == BC.internal:
+                    # This roll of axis is probably not correct...
                     self.bc_upper_neighbor[idim] = np.rollaxis(self.bc_upper_neighbor[idim],idim+1,1)
                     self.qbc_upper(state,dim,state.t,np.rollaxis(self.qbc,idim+1,1),idim)
                 else:
@@ -494,6 +492,8 @@ class Solver(object):
                         self.auxbc_lower(state,dim,state.t,np.rollaxis(self.auxbc,idim+1,1),idim)
                     else:
                         pass #Handled automatically by PETSc
+                elif self.aux_bc_lower[idim] == BC.internal:
+                    raise NotImplemented("AUX bcs not handled with internal boundaries.")
                 else:
                     self.auxbc_lower(state,dim,state.t,np.rollaxis(self.auxbc,idim+1,1),idim)
 
@@ -506,6 +506,8 @@ class Solver(object):
                         self.auxbc_upper(state,dim,state.t,np.rollaxis(self.auxbc,idim+1,1),idim)
                     else:
                         pass #Handled automatically by PETSc
+                elif self.aux_bc_upper[idim] == BC.internal:
+                    raise NotImplemented("AUX bcs not handled with internal boundaries.")
                 else:
                     self.auxbc_upper(state,dim,state.t,np.rollaxis(self.auxbc,idim+1,1),idim)
 
@@ -590,15 +592,16 @@ class Solver(object):
     # ========================================================================
     def evolve_to_time(self,solution,tend=None):
         r"""
-        Evolve solution from solution.t to tend.  If tend is not specified,
-        take a single step.
+        Evolve solution or state from solution.t to tend.  If tend is not 
+        specified, take a single step.
         
         This method contains the machinery to evolve the solution object in
-        ``solution`` to the requested end time tend if given, or one 
-        step if not.          
+        ``solution`` or ``state`` to the requested end time tend if given, or 
+        one step if not.          
 
         :Input:
-         - *solution* - (:class:`Solution`) Solution to be evolved
+         - *solution* - (:class:`Solution` or :class:`State`) Solution to be
+           evolved
          - *tend* - (float) The end time to evolve to, if not provided then 
            the method will take a single time step.
             
@@ -724,6 +727,7 @@ class Solver(object):
         r"""Write solution (or derived quantity) values at each gauge coordinate
             to file.
         """
+        # TODO: This routine needs to be generalized to multiple patches
         for i,gauge in enumerate(solution.states[0].patch.gauges):
             x=gauge[0]; y=gauge[1]
             aux=solution.state.aux[:,x,y]

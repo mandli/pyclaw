@@ -1,6 +1,9 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+r""""""
 
 import pyclaw
-import amr
 from ctypes import *
 
 # Wrap p4est composite structures with ctypes
@@ -66,7 +69,7 @@ class p4est_Domain (pyclaw.geometry.Domain):
        libp4est.pyclaw_MPI_Init ()
        
        # Create a 2D p4est internal state on a square
-       initial_level = 1
+       initial_level = 0
        self.pp = libp4est.pyclaw_p4est_new (initial_level)
        self.num_leaves = pyclaw_pp_get_num_leaves (self.pp)
        
@@ -95,7 +98,7 @@ class p4est_Domain (pyclaw.geometry.Domain):
            
            mesh.contents.quad_to_quad [P4EST_FACES * leaf.contents.total_quad + nface]
            
-           x = pyclaw.Dimension('x',  leaf.contents.lowerleft[0] , leaf.contents.upperright[0] , 64)
+           x = pyclaw.Dimension('x', leaf.contents.lowerleft[0] , leaf.contents.upperright[0], 64)
            y = pyclaw.Dimension('y', leaf.contents.lowerleft[1] , leaf.contents.upperright[1], 64)
            
            patch = pyclaw.geometry.Patch ([x, y])
@@ -104,8 +107,8 @@ class p4est_Domain (pyclaw.geometry.Domain):
            leaf = libp4est.pyclaw_p4est_leaf_next (leaf)
        
    def __del__ (self):
-           libp4est.pyclaw_p4est_destroy (self.pp)
-
-           # Finalize MPI. TODO: Do this in a generic routine
-           libp4est.pyclaw_MPI_Finalize ()
+       libp4est.pyclaw_p4est_destroy (self.pp)
+       
+       # Finalize MPI. TODO: Do this in a generic routine
+       libp4est.pyclaw_MPI_Finalize ()
     

@@ -3,17 +3,15 @@
 
 import numpy as np
 
-def acoustics2D(iplot=False,htmlplot=False,use_petsc=False,outdir='./_output',solver_type='classic'):
-    """
-    Example python script for solving the 2d acoustics equations.
+def acoustics2D(iplot=False,htmlplot=False,parallel=False,outdir='./_output',solver_type='classic'):
+    r"""
+    Example python script for solving the 2d acoustics equations running with
+    p4est.
     """
 
-    if use_petsc:
-        import petclaw as pyclaw
-    else:
-        import pyclaw
-        import pyclaw.amr as amr
-        import pyclaw.p4est as p4est
+    import pyclaw
+    import pyclaw.amr as amr
+    import pyclaw.p4est as p4est
 
     sub_solver=pyclaw.ClawSolver2D()
     sub_solver.dimensional_split=False
@@ -21,7 +19,8 @@ def acoustics2D(iplot=False,htmlplot=False,use_petsc=False,outdir='./_output',so
     sub_solver.num_waves = 2
     sub_solver.limiters = pyclaw.limiters.tvd.MC
 
-    solver = amr.AMRSolver(sub_solver)
+    solver = amr.AMRSolver()
+    solver.sub_solver = sub_solver
     # solver.dt_variable = False
     solver.bc_lower[0]=pyclaw.BC.wall
     solver.bc_upper[0]=pyclaw.BC.extrap

@@ -127,7 +127,8 @@ class ClawSolver(Solver):
         :Output: 
          - (bool) - True if full step succeeded, False otherwise
         """
-
+        
+        # TODO: Should this routine always assume that a state is being passed?
         if self.before_step is not None:
             self.before_step(self,solution)
 
@@ -159,14 +160,20 @@ class ClawSolver(Solver):
         
         In this version, we only need to backup the single state.
         """
-        self._q_backup = solution.state.q.copy('F')
+        if isinstance(solution,Solution):
+            self._q_backup = solution.state.q.copy('F')
+        else:
+            self._q_backup = solution.q.copy('F')
         self._t_old = solution.t
     
     def recall_backup(self,solution):
         r"""Replace the solution with the backuped data.
         
         In this version, we only need to recall the single state."""
-        solution.state.q = self._q_backup
+        if isinstance(solution,Solution):
+            solution.state.q = self._q_backup
+        else:
+            solution.q = self._q_backup
         solution.t = self._t_old
         
             
@@ -240,9 +247,7 @@ class ClawSolver(Solver):
         elif self.num_dim>1:
             raise Exception('Only Fortran kernels are supported in multi-D.')
 
-        self.qbc,self.auxbc = self.allocate_bc_arrays(solution.states[0])
-        self.bc_lower_neighbor = [None] * self.num_dim
-        self.bc_upper_neighbor = [None] * self.num_dim
+        self.allocate_bc_arrays(solution.states[0])
 
 
     def set_fortran_parameters(self,solution):
@@ -251,13 +256,19 @@ class ClawSolver(Solver):
 
         Sets the solver._method array and the cparam common block for the Riemann solver.
         """
-        self.set_method(solution.state)
+        if isinstance(solution,Solution):
+            self.set_method(solution.state)
+        else:
+            self.set_method(solution)
         classic = __import__(self.so_name)
         # The reload here is necessary because otherwise the common block
         # cparam in the Riemann solver doesn't get flushed between running
         # different tests in a single Python session.
         reload(classic)
-        solution.state.set_cparam(classic)
+        if isinstance(solution,Solution):
+            solution.state.set_cparam(classic)
+        else:
+            state.set_cparam(classic)
 
     def teardown(self):
         r"""
@@ -308,7 +319,10 @@ class ClawSolver1D(ClawSolver):
         """
         import numpy as np
 
-        state = solution.states[0]
+        if isinstance(solution,Solution):
+            state = solution.states[0]
+        else:
+            state = solution
         grid = state.grid
 
         self.apply_q_bcs(state)
@@ -334,7 +348,7 @@ class ClawSolver1D(ClawSolver):
             dtdx = np.zeros( (2*self.num_ghost+grid.num_cells[0]) )
 
             # Find local value for dt/dx
-            if state.index_capa>=0:
+            if state.index_capa >= 0:
                 dtdx = self.dt / (grid.delta[0] * state.aux[state.index_capa,:])
             else:
                 dtdx += self.dt/grid.delta[0]
@@ -402,7 +416,8 @@ class ClawSolver1D(ClawSolver):
                 for m in xrange(num_eqn):
                     q[m,LL:UL-1] -= dtdx[LL:UL-1] * (f[m,LL+1:UL] - f[m,LL:UL-1]) 
 
-        else: raise Exception("Unrecognized kernel_language; choose 'Fortran' or 'Python'")
+        else: 
+            raise Exception("Unrecognized kernel_language; choose 'Fortran' or 'Python'")
 
         self.cfl.update_global_max(cfl)
         state.set_q_from_qbc(num_ghost,self.qbc)
@@ -490,7 +505,10 @@ class ClawSolver2D(ClawSolver):
         """
         import numpy as np
 
-        state = solution.state
+        if isinstance(solution,Solution):
+            state = solution.state
+        else
+            state = solution
 
         num_eqn,num_aux,num_waves,num_ghost,aux = state.num_eqn,state.num_aux,self.num_waves,self.num_ghost,state.aux
 
@@ -523,7 +541,10 @@ class ClawSolver2D(ClawSolver):
         solvers and TVD limiters applied to waves.
         """
         if(self.kernel_language == 'Fortran'):
-            state = solution.states[0]
+            if isinstance(solution,Solution):
+                state = solution.states[0]
+            else:
+                state = solution
             grid = state.grid
             dx,dy = grid.delta
             mx,my = grid.num_cells
