@@ -106,7 +106,7 @@ produces the appropriate environment variables for PyClaw (and the other
 Clawpack projects).  To run the script, go into your base directory you 
 created above and run ::
 
-    $ python clawutil/src/python/setenv.py
+    $ python clawutil/src/python/clawutil/setenv.py
     
 This script should produce two files that contain the shell script for setting
 the above variables.  By default these files are called ``setenv.bash`` and 
@@ -122,6 +122,15 @@ depending on your shell (this can be checked by typing ``printenv SHELL`` at
 your command line).  The shell code in these files can be copied to your
 .bashrc, .cshrc, or .profile file to be run automatically when you open a 
 terminal.
+
+Finally, compile the Fortran code for the solvers and Riemann solvers::
+
+    $ cd $PYCLAW/src/pyclaw/clawpack
+    $ make
+    $ cd $PYCLAW/src/pyclaw/sharpclaw
+    $ make
+    $ cd $RIEMANN/src/python/riemann
+    $ make
 
 
 Testing your installation with nose
@@ -147,7 +156,6 @@ Running and plotting an example
 Next ::
 
     $ cd $PYCLAW/apps/advection_1d
-    $ make
     $ python advection.py iplot=1
 
 This will run the code and then place you in an interactive plotting shell.

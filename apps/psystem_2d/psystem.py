@@ -89,7 +89,7 @@ def b4step(solver,solution):
     if state.problem_data['turnZero_half_2D']==1:
         if state.t>=state.problem_data['t_turnZero'] and state.t<=state.problem_data['t_turnZero']+1:
             Y,X = np.meshgrid(state.grid.y,state.grid.x)
-            state.q = state.q * (X<solution.domain.upper[0]/2)
+            state.q = state.q * (X<solution.domain.grid.upper[0]/2)
 
 def compute_p(state):
     state.p[0,:,:]=np.exp(state.q[0,:,:]*state.aux[1,:,:])-1
@@ -154,6 +154,10 @@ def psystem2D(use_petsc=False,solver_type='classic',iplot=False,htmlplot=False):
     restart_from_frame = None
     solver = pyclaw.ClawSolver2D()
     #solver = pyclaw.SharpClawSolver2D()
+    import riemann
+
+    solver.rp = riemann.rp2_psystem
+
     solver.num_waves = 2
     solver.limiters = pyclaw.limiters.tvd.superbee
 

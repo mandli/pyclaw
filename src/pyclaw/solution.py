@@ -55,7 +55,8 @@ class Solution(object):
         The initialization of a Solution can happen one of these ways
         
             1. `args` is empty and an empty Solution is created
-            2. `args` is a single State or list of States and is followed
+            2. `args` is an integer (the number of components of q), a single
+               State, or a list of States and is followed
                by the appropriate :ref:`geometry <pyclaw_geometry>` object
                which can be one of:
                 
@@ -163,45 +164,57 @@ class Solution(object):
         
         See :class:`Solution` for more info.
         """
-        
-        self.domain = None
-        self.states = []
-        # If arg is non-zero, we are reading in a solution, otherwise, we
-        # create an empty Solution
-        if len(arg) > 0:
-            if isinstance(arg[0],int):
-                frame = arg[0]
-                self.read(frame,**kargs)
-            else:
-                # Single State
-                if isinstance(arg[0],State):
-                    self.states = [arg[0]]
-                    self.domain = Domain(arg[0].patch)
-                elif isinstance(arg[0],Domain):
-                    self.domain = arg[0]
-                    # TODO: assuming num_eqn and num_aux are being added here
-                    num_eqn = arg[1]
-                    num_aux = arg[2]
-                    for patch in self.domain.patches:
-                        self.states.append(State(patch,num_eqn,num_aux))
-                elif isinstance(arg[0],list):
-                    # List of States
-                    if isinstance(arg[0][0],State):
-                        self.states = arg[0]
-                    else:
-                        raise Exception("Invalid argument list")
-                elif isinstance(arg[1],Domain):
-                    self.domain = arg[1]
-                else:
-                    if not isinstance(arg[1],list):
-                        arg[1] = list(arg[1])
-                    if isinstance(arg[1][0],Dimension):
-                        self.domain = Domain(Patch(arg[1]))
-                    elif isinstance(arg[1][0],Patch):
-                        self.domain = Domain(arg[1])
-                    else:
-                        raise Exception("Invalid argument list")
+        import sys
+        if 'claw_package' in kargs.keys():
+            claw_package = kargs['claw_package']
+        else:
+            claw_package = None
 
+        if claw_package is not None and claw_package in sys.modules:
+            self.claw_package = sys.modules[claw_package]
+        else:
+            claw_package_name = self.__module__[0:self.__module__.find('.')]
+            if claw_package_name in sys.modules:
+                self.claw_package = sys.modules[claw_package_name]
+            else:
+                raise NotImplementedError("Unable to determine solver package, please provide one")
+
+        State = self.claw_package.State
+
+        self.states = []
+        self.domain = None
+        if len(arg) == 1:
+            # Load frame
+            frame = arg[0]
+            self.read(frame,**kargs)
+        elif len(arg) == 2:
+            #Set domain
+            if isinstance(arg[1],Domain):
+                self.domain = arg[1]
+            else:
+                if not isinstance(arg[1],(list,tuple)):
+                    arg[1] = list(arg[1])
+                if isinstance(arg[1][0],Dimension):
+                    self.domain = Domain(Patch(arg[1]))
+                elif isinstance(arg[1][0],Patch):
+                    self.domain = Domain(arg[1])
+                else:
+                    raise Exception("Invalid argument list")
+
+            #Set state
+            if isinstance(arg[0],State):
+                # Single State
+                self.states.append(arg[0])
+            elif isinstance(arg[0],(list,tuple)):
+                if isinstance(arg[0][0],State):
+                    # List of States
+                    self.states = arg[0]
+                elif isinstance(arg[0][0],int):
+                    self.states = State(self.domain,arg[0][0],arg[0][1])
+                else:
+                    raise Exception("Invalid argument list")
+            elif isinstance(arg[0],int):
+                self.states.append(State(self.domain,arg[0]))
             if self.states == [] or self.domain is None:
                 raise Exception("Invalid argument list")
                 

@@ -46,11 +46,11 @@ class Grid(object):
 
     A PyClaw grid is usually constructed from a tuple of PyClaw Dimension objects:
 
-        >>> x = Dimension('x',0.,1.,10)
+	>>> from pyclaw.geometry import Dimension, Grid      
+	>>> x = Dimension('x',0.,1.,10)
         >>> y = Dimension('y',-1.,1.,25)
-        >>> grid = grid((x,y))
+        >>> grid = Grid((x,y))
         >>> print grid
-        grid 1:
         Dimension x:  (num_cells,delta,[lower,upper]) = (10,0.1,[0.0,1.0])
         Dimension y:  (num_cells,delta,[lower,upper]) = (25,0.08,[-1.0,1.0])
         >>> grid.num_dim
@@ -92,14 +92,6 @@ class Grid(object):
     def num_cells(self): 
         r"""(list) - List of the number of cells in each dimension"""
         return self.get_dim_attribute('num_cells')
-    @property
-    def nend(self):
-        r"""(list) - List of the number of cells in each dimension"""
-        return self.get_dim_attribute('nend')
-    @property
-    def name(self):
-        r"""(list) - List of names of each dimension"""
-        return self._dimensions
     @property
     def lower(self):
         r"""(list) - Lower coordinate extents of each dimension"""
@@ -187,6 +179,7 @@ class Grid(object):
     
     
     def __str__(self):
+	output = ''
         output += '\n'.join((str(getattr(self,dim)) for dim in self._dimensions))
         return output
     
@@ -400,34 +393,31 @@ class Dimension(object):
 
     Example:
 
+    >>> from pyclaw.geometry import Dimension
     >>> x = Dimension('x',0.,1.,100)
     >>> print x
-    Dimension x:  (n,d,[lower,upper]) = (100,0.01,[0.0,1.0])
+    Dimension x:  (num_cells,delta,[lower,upper]) = (100,0.01,[0.0,1.0])
     >>> x.name
     'x'
-    >>> x.n
+    >>> x.num_cells
     100
-    >>> x.d
+    >>> x.delta
     0.01
-    >>> x.edge[0]
+    >>> x.edges[0]
     0.0
-    >>> x.edge[1]
+    >>> x.edges[1]
     0.01
-    >>> x.edge[-1]
+    >>> x.edges[-1]
     1.0
-    >>> x.center[-1]
+    >>> x.centers[-1]
     0.995
-    >>> len(x.center)
+    >>> len(x.centers)
     100
-    >>> len(x.edge)
+    >>> len(x.edges)
     101
     """
     
     # ========== Property Definitions ========================================
-    @property
-    def ng(self):
-        r"""(int) - Number of cells in this dimension, on this process"""
-        return self.num_cells
     @property
     def delta(self):
         r"""(float) - Size of an individual, computational cell"""
@@ -501,12 +491,42 @@ class Dimension(object):
 # ============================================================================
 #  Pyclaw Patch object definition
 # ============================================================================
-class Patch(Grid):
+class Patch(object):
     """
     :Global Patch information:
     
         Each patch has a value for :attr:`level` and :attr:`patch_index`.
     """
+    # Global properties
+    @property
+    def num_cells_global(self): 
+        r"""(list) - List of the number of cells in each dimension"""
+        return self.get_dim_attribute('num_cells')
+    @property
+    def lower_global(self):
+        r"""(list) - Lower coordinate extents of each dimension"""
+        return self.get_dim_attribute('lower')
+    @property
+    def upper_global(self):
+        r"""(list) - Upper coordinate extends of each dimension"""
+        return self.get_dim_attribute('upper')
+    @property
+    def num_dim(self):
+        r"""(int) - Number of dimensions"""
+        return len(self._dimensions)
+    @property
+    def dimensions(self):
+        r"""(list) - List of :class:`Dimension` objects defining the 
+                grid's extent and resolution"""
+        return [getattr(self,name) for name in self._dimensions]
+    @property
+    def delta(self):
+        r"""(list) - List of computational cell widths"""
+        return self.get_dim_attribute('delta')
+    @property
+    def name(self):
+        r"""(list) - List of names of each dimension"""
+        return self._dimensions
 
     def __init__(self,dimensions):
         self.level = 1
@@ -514,21 +534,40 @@ class Patch(Grid):
         self.patch_index = 1
         r"""(int) - Patch number of current patch, ``default = 0``"""
 
+        if isinstance(dimensions,Dimension):
+            dimensions = [dimensions]
+        self._dimensions = []
+        for dim in dimensions:
+            self.add_dimension(dim)
+
         self.grid = Grid(dimensions)
 
-        super(Patch,self).__init__(dimensions)
+        super(Patch,self).__init__()
 
+    def add_dimension(self,dimension):
+        r"""
+        Add the specified dimension to this patch
+        
+        :Input:
+         - *dimension* - (:class:`Dimension`) Dimension to be added
+        """
 
+        # Add dimension to name list and as an attribute
+        self._dimensions.append(dimension.name)
+        setattr(self,dimension.name,dimension)
+  
+    def get_dim_attribute(self,attr):
+        r"""
+        Returns a tuple of all dimensions' attribute attr
+        """
+        return [getattr(getattr(self,name),attr) for name in self._dimensions]
     def __deepcopy__(self,memo={}):
         import copy
         result = self.__class__(copy.deepcopy(self.dimensions))
         result.__init__(copy.deepcopy(self.dimensions))
         
-        for attr in ('level','patch_index','_p_centers','_p_edges',
-                        '_c_centers','_c_edges'):
+        for attr in ('level','patch_index'):
             setattr(result,attr,copy.deepcopy(getattr(self,attr)))
-        
-        result.mapc2p = self.mapc2p
         
         return result
         
@@ -547,21 +586,9 @@ class Domain(object):
     Need to add functionality to accept a list of patches as input.
     """
     @property
-    def dimensions(self):
-        r"""(list) - :attr:`Patch.dimensions` of base patch"""
-        return self._get_base_patch_attribute('dimensions')
-    @property
-    def name(self):
-        r"""(list) - :attr:`Patch.name` of base patch"""
-        return self._get_base_patch_attribute('name')
-    @property
     def num_dim(self):
         r"""(int) - :attr:`Patch.num_dim` of base patch"""
         return self._get_base_patch_attribute('num_dim')
-    @property
-    def num_cells(self):
-        r"""(list) - :attr:`Patch.num_cells` of base domain.patch"""
-        return self._get_base_patch_attribute('num_cells')
     @property
     def patch(self):
         r"""(:class:`Patch`) - First patch is returned"""
@@ -570,49 +597,9 @@ class Domain(object):
     def grid(self):
         r"""(list) - :attr:`Patch.grid` of base patch"""
         return self._get_base_patch_attribute('grid')
-    @property
-    def lower(self):
-        r"""(list) - :attr:`Patch.lower` of base patch"""
-        return self._get_base_patch_attribute('lower')
-    @property
-    def upper(self):
-        r"""(list) - :attr:`Patch.upper` of base patch"""
-        return self._get_base_patch_attribute('upper')
-    @property
-    def delta(self):
-        r"""(list) - :attr:`Patch.delta` of base patch"""
-        return self._get_base_patch_attribute('delta')
-    @property
-    def units(self):
-        r"""(list) - :attr:`Patch.units` of base patch"""
-        return self._get_base_patch_attribute('units')
-    @property
-    def center(self):
-        r"""(list) - :attr:`Patch.center` of base patch"""
-        return self._get_base_patch_attribute('center')
-    @property
-    def edge(self):
-        r"""(list) - :attr:`Patch.edge` of base patch"""
-        return self._get_base_patch_attribute('edge')
-    @property
-    def p_center(self):
-        r"""(list) - :attr:`Patch.p_center` of base patch"""
-        return self._get_base_patch_attribute('p_center')
-    @property
-    def p_edge(self):
-        r"""(list) - :attr:`Patch.p_edge` of base patch"""
-        return self._get_base_patch_attribute('p_edge')
-    @property
-    def c_center(self):
-        r"""(list) - :attr:`Patch.c_center` of base patch"""
-        return self._get_base_patch_attribute('c_center')
-    @property
-    def c_edge(self):
-        r"""(list) - :attr:`Patch.c_edge` of base patch"""
-        return self._get_base_patch_attribute('c_edge')
  
     def __init__(self,geom):
-        if not isinstance(geom,list):
+        if not isinstance(geom,list) and not isinstance(geom,tuple):
             geom = [geom]
         if isinstance(geom[0],Patch):
             self.patches = geom

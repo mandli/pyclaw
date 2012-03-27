@@ -34,6 +34,9 @@ def acoustics2D(use_petsc=False,kernel_language='Fortran',iplot=False,htmlplot=F
         solver = pyclaw.SharpClawSolver2D()
         solver.num_waves = 2
 
+    import riemann
+    solver.rp = riemann.rp2_acoustics
+
     solver.cfl_max = 0.5
     solver.cfl_desired = 0.45
     solver.bc_lower[0] = pyclaw.BC.extrap
@@ -63,7 +66,7 @@ def acoustics2D(use_petsc=False,kernel_language='Fortran',iplot=False,htmlplot=F
     qinit(state)
     initial_solution = pyclaw.Solution(state,domain)
 
-    solver.dt_initial=np.min(domain.delta)/state.problem_data['cc']*solver.cfl_desired
+    solver.dt_initial=np.min(domain.grid.delta)/state.problem_data['cc']*solver.cfl_desired
 
     claw = pyclaw.Controller()
     claw.keep_copy = True
