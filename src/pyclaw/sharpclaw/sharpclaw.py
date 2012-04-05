@@ -354,8 +354,6 @@ class SharpClawSolver1D(SharpClawSolver):
         super(SharpClawSolver1D,self).__init__()
 
 
-<<<<<<< HEAD
-=======
     def teardown(self):
         r"""
         Deallocate F90 module arrays.
@@ -368,7 +366,6 @@ class SharpClawSolver1D(SharpClawSolver):
             del self.fmod
 
 
->>>>>>> clawpack-trunk
     def dq_hyperbolic(self,state):
         r"""
         Compute dq/dt * (delta t) for the hyperbolic hyperbolic system.
@@ -500,8 +497,6 @@ class SharpClawSolver2D(SharpClawSolver):
         super(SharpClawSolver2D,self).__init__()
 
 
-<<<<<<< HEAD
-=======
     def teardown(self):
         r"""
         Deallocate F90 module arrays.
@@ -514,7 +509,6 @@ class SharpClawSolver2D(SharpClawSolver):
             del self.fmod
 
 
->>>>>>> clawpack-trunk
     def dq_hyperbolic(self,state):
         """Compute dq/dt * (delta t) for the hyperbolic hyperbolic system
 

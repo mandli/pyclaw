@@ -500,7 +500,7 @@ class ClawSolver2D(ClawSolver):
 
         if isinstance(solution,Solution):
             state = solution.state
-        else
+        else:
             state = solution
 
         num_eqn,num_aux,num_waves,num_ghost,aux = state.num_eqn,state.num_aux,self.num_waves,self.num_ghost,state.aux
