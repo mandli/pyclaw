@@ -9,6 +9,7 @@ import os,sys
 import subprocess
 import logging
 import tempfile
+import glob
 import numpy as np
 
 def add_parent_doc(parent):
@@ -121,7 +122,7 @@ def test_app_variants(application, verifier, kernel_languages, **kwargs):
         test_app(application, verifier, test_kwargs)
     return
 
-def test_app(application, verifier, kwargs):
+def test_app(application, verifier, kwargs, use_temp=True):
     r"""
     Test the output of a given application against its verifier method.
 
@@ -153,14 +154,19 @@ def test_app(application, verifier, kwargs):
         except ImportError, e:
             pass
 
-    claw = application(**kwargs)
-    claw.run()
-    check_values = verifier(claw)
+    # Use a temporary directory to write output to
+    try:
+        if use_temp and not kwargs['use_petsc']:
+            base_path = tempfile.mkdtemp()
+            os.chdir(base_path)
+        claw = application(**kwargs)
+        claw.run()
+        check_values = verifier(claw)
 
-    if check_values is not None:
-        import inspect
-        err = \
-        """%s
+        if check_values is not None:
+            import inspect
+            err = \
+            """%s
 ********************************************************************************
 verification function
 %s
@@ -171,15 +177,30 @@ test error           : %s
 %s
 ********************************************************************************
 """ % \
-        (inspect.getsourcefile(application),
-         inspect.getsource(verifier),
-         kwargs,
-         check_values[0],
-         check_values[1],
-         check_values[2],
-         check_values[3])
-        raise VerifyError(err)
-    return
+            (inspect.getsourcefile(application),
+             inspect.getsource(verifier),
+             kwargs,
+             check_values[0],
+             check_values[1],
+             check_values[2],
+             check_values[3])
+            raise VerifyError(err)
+
+    finally:
+        if use_temp:
+            remove_path(base_path)
+
+def remove_path(base_path):
+    r"""Remove all files from directory at path recursively."""
+
+    paths = glob.glob(os.path.join(base_path,"*"))
+    for path in paths:
+        if os.path.isdir(path):
+            remove_path(path)
+            os.rmdir(path)
+        else:
+            os.remove(path)
+
 
 def check_diff(expected, test, **kwargs):
     r"""
