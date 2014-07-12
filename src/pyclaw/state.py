@@ -108,8 +108,12 @@ class State(object):
             self.F = self.new_array(mF)
 
     # ========== Class Methods ===============================================
-    def __init__(self,geom,num_eqn,num_aux=0):
+    def __init__(self, geom, num_eqn, num_aux=0, q_labels=[], aux_labels=[]):
         from clawpack.pyclaw import geometry
+
+        # ========== Attribute Definitions ===================================
+        self.patch = None
+        r"""pyclaw.Patch.patch - The patch this state lives on"""
         if isinstance(geom,geometry.Patch):
             self.patch = geom
         elif isinstance(geom,geometry.Domain):
@@ -117,17 +121,14 @@ class State(object):
         else:
             raise Exception("""A PyClaw State object must be initialized with
                              a PyClaw Patch object.""")
-
-        # ========== Attribute Definitions ===================================
-        r"""pyclaw.Patch.patch - The patch this state lives on"""
-        self.p   = None
+        self.p = None
         r"""(ndarray(mp,...)) - Cell averages of derived quantities."""
-        self.F   = None
+        self.F = None
         r"""(ndarray(mF,...)) - Cell averages of output functional densities."""
         self.problem_data = {}
         r"""(dict) - Dictionary of global values for this patch, 
             ``default = {}``"""
-        self.t=0.
+        self.t = 0.0
         r"""(float) - Current time represented on this patch, 
             ``default = 0.0``"""
         self.index_capa = -1
@@ -138,10 +139,15 @@ class State(object):
         r"""(list) - List of numpy.ndarray objects. Each element of the list
         stores the values of the corresponding gauge if ``keep_gauges`` is set
         to ``True``"""
-        
 
-        self.q   = self.new_array(num_eqn)
-        self.aux = self.new_array(num_aux)
+        self.q = self.new_array(num_eqn, labels=q_labels)
+        r"""Array containing solution (q) values.
+        
+        Settting state.num_eqn automatically allocates space for q, as does 
+        setting q itself.
+        """
+        self.aux = self.new_array(num_aux, labels=aux_labels)
+        r"""Array containing aux values."""
 
     def __str__(self):
         output = "PyClaw State object\n"
@@ -294,14 +300,45 @@ class State(object):
         
         return result
 
-    def sum_F(self,i):
+    def sum_F(self, i):
         return np.sum(np.abs(self.F[i,...]))
 
-    def new_array(self,dof):
-        if dof==0: return None
-        shape = [dof]
-        shape.extend(self.grid.num_cells)
-        return np.empty(shape,order='F')
+    def new_array(self, num_eqn, labels=None):
+        r"""Create a new field array.
+
+        The new array will have dimensions *(num_eqn, ...)* where the rest of
+        the shape is determined by the associated :class:`pyclaw.Patch.patch`.
+        If *labels* are provided then these are used to label the individual
+        fields of the returned array.
+
+        returns :class:`numpy.ndarray`
+        """
+
+        if num_eqn == 0: 
+            return None
+
+        if labels is None:
+            labels = [str(i) for i in xrange(num_eqn)]
+        elif len(labels) < num_eqn:
+            for i in xrange(num_eqn - len(labels)):
+                labels.append(str(i))
+        elif len(labels) > num_eqn:
+            logger.warning("Number of labels > number of fields requested.")
+            labels = labels[:num_eqn]
+        dtype = [(label, np.float64) for label in labels]
+        for dimension in self.grid.dimensions:
+            dtype.append((dimension.name, dimension.num_cells))
+
+        return np.empty(dtype=dtype, order='F')
+
+
+    def set_q_labels(self, new_labels):
+        r"""Set the labels of *q* to *new_labels*."""
+        
+        self.q.dtype.names = new_labels
+
+    def set_aux_labels(self, fie)
+
 
     def get_q_global(self):
         r"""
