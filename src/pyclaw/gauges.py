@@ -9,6 +9,7 @@ import sys
 
 import numpy
 from six.moves import range
+from six import string_types
 
 # See if pandas is available
 try:
@@ -29,17 +30,16 @@ class GaugeSolution(object):
 
         There are a few ways to create a `GaugeSolution`:
           1. Provide a `gauge_id` and a `path` to find that gauge.  This will
-             initialize a gauge with the data at `path` for the gauge with gauge
-             id `gauge_id`.  Note that `path` will default to the current
+             initialize a gauge with the data at `path` for the gauge with
+             gauge id `gauge_id`.  Note that `path` will default to the current
              working directory provided by `os.getcwd()` if `path` is not
              provided.
           2. Create an empty gauge by providing neither `gauge_id` or `path`.
 
-        Additionally the parameter `use_pandas` can be provided which determines
-        how the gauge's data is stored.  By default this is `False` and the
-        `GaugeSolution` will use a `numpy` ndarray.
+        Additionally the parameter `use_pandas` can be provided which
+        determines how the gauge's data is stored.  By default this is `False`
+        and the`GaugeSolution` will use a `numpy` ndarray.
     """
-
 
     def __init__(self, gauge_id=None, path=None, use_pandas=False):
         r"""GaugeSolution Initiatlization Routine
@@ -55,9 +55,9 @@ class GaugeSolution(object):
 
         # Gauge data
         self.level = None
-        r"""(ndarray(:) - int) - The level the given observation used"""
+        r"""(ndarray(:) - int) - The level the observation used"""
         self.t = None
-        r"""(ndarray(:) - float) - The time the given observation was made at"""
+        r"""(ndarray(:) - float) - The time the observation was made at"""
         self.q = None
         r"""(ndarray(*, :) - float) - Observed data"""
         self.aux = None
@@ -108,7 +108,8 @@ class GaugeSolution(object):
                 num_eqn = int(data[8])
             elif len(data) == 10:
                 # 3d
-                self.location = (float(data[4]), float(data[5]), float(data[6]))
+                self.location = (float(data[4]), float(data[5]),
+                                 float(data[6]))
                 num_eqn = int(data[9])
 
             # Read in one more line to check to make sure there's actually data
@@ -131,7 +132,7 @@ class GaugeSolution(object):
             if not pandas_available:
                 raise ImportError("Pandas not available.")
 
-            raise NotImplementedError("Pandas data backend not implemented yet.")
+            raise NotImplementedError("Pandas backend not implemented yet.")
             self.q = pandas.DataFrame()
         else:
             data = numpy.loadtxt(gauge_path, comments="#")
@@ -165,14 +166,16 @@ class GaugeSolution(object):
         gauge_file_name = "gauge%s.txt" % str(self.id).zfill(5)
         with open(os.path.join(path, gauge_file_name), "w") as gauge_file:
 
-            gauge_file.write("# gauge_id= %s location=( %s %s ) num_eqn= %s\n" %
-                 (self.id, self.location[0], self.location[1], self.q.shape[0]))
+            gauge_file.write("# gauge_id= %s location=( %s %s ) num_eqn= %s\n"
+                             % (self.id, self.location[0], self.location[1],
+                                self.q.shape[0]))
             gauge_file.write("# Columns: level time q(1 ... num_eqn)\n")
 
             # print(self.q.shape)
             for i in range(self.q.shape[1]):
                 gauge_file.write("%02i %+.15e " % (self.level[i], self.t[i]))
-                gauge_file.write(" ".join([format % value for value in self.q[:, i]]))
+                gauge_file.write(" ".join([format % value
+                                           for value in self.q[:, i]]))
                 gauge_file.write("\n")
 
 
@@ -198,9 +201,9 @@ class GaugeSolution(object):
         if self.is_valid():
             output = "%4i" % self.id
             for j in range(len(self.location)):
-                output = " ".join((output,"%17.10e" % self.location[j]))
-            output = " ".join((output,"%13.6e" % self.t[0]))
-            output = " ".join((output,"%13.6e\n" % self.t[-1]))
+                output = " ".join((output, "%17.10e" % self.location[j]))
+            output = " ".join((output, "%13.6e" % self.t[0]))
+            output = " ".join((output, "%13.6e\n" % self.t[-1]))
         else:
             output = None
 
@@ -208,9 +211,8 @@ class GaugeSolution(object):
 
 
     def __str__(self):
-        return ("Gauge %s: location = %s, t = [%s, %s]" %
-                                    (self.id, self.location,
-                                     self.t[0], self.t[-1]))
+        return ("Gauge %s: location = %s, t = [%s, %s]" % (self.id,
+                self.location, self.t[0], self.t[-1]))
 
 
 # ==============================
@@ -220,11 +222,11 @@ def compare_gauges(paths, gauge_id, fields='all'):
     r"""Make plots comparing gauges in different directories
 
     :Input:
-     - *paths* (list) List of paths of length 2 pointing to the directories that
-       the gauge files are to be taken from.
+     - *paths* (list) List of paths of length 2 pointing to the directories
+       that the gauge files are to be taken from.
      - *gauge_id* (int) Gauge id to compare.
-     - *fields* (int or list) Fields to be plotted.  If fields == 'all' then all
-       available fields will be plotted.  Default is 'all'.
+     - *fields* (int or list) Fields to be plotted.  If fields == 'all' then
+       all available fields will be plotted.  Default is 'all'.
 
     :Output:
      - (matplotlib.figure.Figure) Figure object created by comparison
@@ -232,17 +234,19 @@ def compare_gauges(paths, gauge_id, fields='all'):
 
     import matplotlib.pyplot as plt
 
-    if len(path) != 2:
+    if len(paths) != 2:
         raise ValueError("Provide two paths to gauge files for comparison.")
 
+    gauges = []
     for path in paths:
-        gauges = GaugeSolution(path=path, gauge_id=gauge_id)
+        gauges.append(GaugeSolution(path=path, gauge_id=gauge_id))
 
-    if fields.lower() == 'all':
-        fields = range(gauges[0].q.shape[0])
+    if isinstance(fields, string_types):
+        if fields.lower() == 'all':
+            fields = range(gauges[0].q.shape[0])
 
     fig = plt.figure()
-    fig.suptitle("Gauge %s" % gauges[0].gauge_id)
+    fig.suptitle("Gauge %s" % gauge_id)
     for (i, n) in enumerate(fields):
         axes = fig.add_subplot(len(fields), 2, 2 * i + 1)
         axes.plot(gauges[0].t, gauges[0].q[n, :], 'ko', label="%s" % paths[0])
@@ -251,19 +255,15 @@ def compare_gauges(paths, gauge_id, fields='all'):
         axes.set_ylabel("q[%s, :]" % n)
         axes.legend()
 
-        axes = fig.add_subplot(len(fields), 2, 2 * i + 1)
-        axes.plot(gauges[0].t, 
+        axes = fig.add_subplot(len(fields), 2, 2 * i + 2)
+        axes.plot(gauges[0].t,
                   numpy.abs(gauges[0].q[n, :] - gauges[1].q[n, :]), 'r')
         axes.set_xlabel("t")
-        axes.set_ylabel("$|q_{old}[%s, :] - q_{new}[%s, :]|$" % (n, n))
+        axes.set_ylabel("$|q_{0}[%s, :] - q_{1}[%s, :]|$" % (n, n))
 
     return fig
 
 
-
-# =============================================================
-#  Utility Functions to Help Transition to the New Gauge Files
-# =============================================================
 def convert_gauges(path, output_path=None):
     r"""Convert gauge output data from fort.gauge file to new format
 
@@ -302,10 +302,8 @@ def convert_gauges(path, output_path=None):
             print("          gauge id = %s" % gauge_id)
 
 
-
 def compare_old_gauges(old_path, new_path, gauge_id, plot=False, abs_tol=1e-14,
-                                                     rel_tol=0.0, 
-                                                     verbose=False):
+                       rel_tol=0.0, verbose=False):
     r"""Compare old gauge data at `path` to new gauge data at same path
 
     Provided as a quick check to see if the function `convert_gauges` has
@@ -326,8 +324,8 @@ def compare_old_gauges(old_path, new_path, gauge_id, plot=False, abs_tol=1e-14,
 
     :Output:
      - (bool) Whether the gauges agreed to double precision.  Uses
-       `numpy.testing.assert_allequal` to check with the `abs_tol` and `rel_tol`
-       specified above.
+       `numpy.testing.assert_allequal` to check with the `abs_tol` and
+       `rel_tol` specified above.
     """
 
     # Load old gauge data
@@ -343,9 +341,9 @@ def compare_old_gauges(old_path, new_path, gauge_id, plot=False, abs_tol=1e-14,
     if verbose:
         print("Comparison of guage %s:" % gauge_id)
         print("           ||\Delta q||_2 = ",
-                              numpy.linalg.norm(q - gauge.q.transpose(), ord=2))
+              numpy.linalg.norm(q - gauge.q.transpose(), ord=2))
         print("  arg(||\Delta q||_\infty = ",
-                              numpy.argmax(q - gauge.q.transpose()))
+              numpy.argmax(q - gauge.q.transpose()))
 
     if plot:
         import matplotlib.pyplot as plt
@@ -369,11 +367,11 @@ def check_old_gauge_data(path, gauge_id, new_gauge_path="./regression_data"):
     :Input:
      - *path* (string) - Path to old gauge data file
      - *gauge_id* (int) - Gauge id to compare
-     - *new_gauge_path* (path) - Path to directory containing new gauge files, 
+     - *new_gauge_path* (path) - Path to directory containing new gauge files,
        defaults to './regression_data'.
 
     :Output:
-     - (figure) Returns a matplotlib figure object plotting the differences in 
+     - (figure) Returns a matplotlib figure object plotting the differences in
        time.
     """
 
@@ -404,11 +402,10 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
 
-    help_msg = \
-"""gauges.py path1 path2 [gauge_id] [fields...]
+    help_msg = """gauges.py path1 path2 [gauge_id] [fields...]
 
-Plots a comparison between the gauges at path1 and path2 with gauge_id and the 
-fields specified.  Only one gauge_id can be specified at a time but a number of 
+Plots a comparison between the gauges at path1 and path2 with gauge_id and the
+fields specified.  Only one gauge_id can be specified at a time but a number of
 fields can be specfied including 'all'.
 """
 
@@ -425,8 +422,7 @@ fields can be specfied including 'all'.
                 if sys.argv[4].lower() == 'all':
                     fields = 'all'
                 else:
-                    fields = [int(field for field in sys.argv[4:])]
-
+                    fields = [int(field) for field in sys.argv[4:]]
 
     fig = compare_gauges(paths, gauge_id, fields)
     plt.show()
