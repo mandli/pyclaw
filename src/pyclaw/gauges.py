@@ -218,7 +218,7 @@ class GaugeSolution(object):
 # ==============================
 #  Utility Functions for Gauges
 # ==============================
-def compare_gauges(paths, gauge_id, fields='all'):
+def compare_gauges(paths, gauge_id, fields='all', verbose=True):
     r"""Make plots comparing gauges in different directories
 
     :Input:
@@ -227,6 +227,8 @@ def compare_gauges(paths, gauge_id, fields='all'):
      - *gauge_id* (int) Gauge id to compare.
      - *fields* (int or list) Fields to be plotted.  If fields == 'all' then
        all available fields will be plotted.  Default is 'all'.
+     - *verbose* (bool) If *true* will print out some diagnostics.  Default is
+       'verbose = True'.
 
     :Output:
      - (matplotlib.figure.Figure) Figure object created by comparison
@@ -243,14 +245,15 @@ def compare_gauges(paths, gauge_id, fields='all'):
 
     if isinstance(fields, string_types):
         if fields.lower() == 'all':
-            fields = range(gauges[0].q.shape[0])
+            fields = [i for i in range(gauges[0].q.shape[0])]
 
     fig = plt.figure()
     fig.suptitle("Gauge %s" % gauge_id)
     for (i, n) in enumerate(fields):
         axes = fig.add_subplot(len(fields), 2, 2 * i + 1)
+        import pdb; pdb.set_trace()
         axes.plot(gauges[0].t, gauges[0].q[n, :], 'ko', label="%s" % paths[0])
-        axes.plot(gauges[0].t, gauges[1].q[n, :], 'rx', label="%s" % paths[1])
+        axes.plot(gauges[1].t, gauges[1].q[n, :], 'rx', label="%s" % paths[1])
         axes.set_xlabel("t")
         axes.set_ylabel("q[%s, :]" % n)
         axes.legend()
@@ -260,6 +263,10 @@ def compare_gauges(paths, gauge_id, fields='all'):
                   numpy.abs(gauges[0].q[n, :] - gauges[1].q[n, :]), 'r')
         axes.set_xlabel("t")
         axes.set_ylabel("$|q_{0}[%s, :] - q_{1}[%s, :]|$" % (n, n))
+
+    if verbose:
+        print("L2 Diff = %s" %
+              (numpy.linalg.norm(gauges[0].q[n, :] - gauges[1].q[n, :])))
 
     return fig
 
@@ -409,7 +416,6 @@ fields specified.  Only one gauge_id can be specified at a time but a number of
 fields can be specfied including 'all'.
 """
 
-    fields = [0]
     gauge_id = 1
     if len(sys.argv) < 3:
         print(help_msg)
@@ -419,10 +425,9 @@ fields can be specfied including 'all'.
         if len(sys.argv) > 3:
             gauge_id = int(sys.argv[3])
             if len(sys.argv) > 4:
-                if sys.argv[4].lower() == 'all':
-                    fields = 'all'
-                else:
-                    fields = [int(field) for field in sys.argv[4:]]
+                fields = [int(i) for i in sys.argv[4:]]
+            else:
+                fields = 'all'
 
     fig = compare_gauges(paths, gauge_id, fields)
     plt.show()
