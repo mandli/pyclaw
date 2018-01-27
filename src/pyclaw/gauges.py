@@ -251,7 +251,6 @@ def compare_gauges(paths, gauge_id, fields='all', verbose=True):
     fig.suptitle("Gauge %s" % gauge_id)
     for (i, n) in enumerate(fields):
         axes = fig.add_subplot(len(fields), 2, 2 * i + 1)
-        import pdb; pdb.set_trace()
         axes.plot(gauges[0].t, gauges[0].q[n, :], 'ko', label="%s" % paths[0])
         axes.plot(gauges[1].t, gauges[1].q[n, :], 'rx', label="%s" % paths[1])
         axes.set_xlabel("t")
